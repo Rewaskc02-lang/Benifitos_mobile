@@ -1,0 +1,23 @@
+CREATE CONSTRAINT citizen_id_unique IF NOT EXISTS
+FOR (c:Citizen)
+REQUIRE c.id IS UNIQUE;
+
+CREATE CONSTRAINT scheme_id_unique IF NOT EXISTS
+FOR (s:Scheme)
+REQUIRE s.id IS UNIQUE;
+
+CREATE CONSTRAINT document_id_unique IF NOT EXISTS
+FOR (d:Document)
+REQUIRE d.id IS UNIQUE;
+
+CREATE CONSTRAINT lifestage_id_unique IF NOT EXISTS
+FOR (l:LifeStage)
+REQUIRE l.id IS UNIQUE;
+
+CREATE CONSTRAINT family_id_unique IF NOT EXISTS
+FOR (f:Family)
+REQUIRE f.id IS UNIQUE;
+
+CREATE CONSTRAINT state_id_unique IF NOT EXISTS
+FOR (s:State)
+REQUIRE s.id IS UNIQUE;

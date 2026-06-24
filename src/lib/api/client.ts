@@ -1,0 +1,102 @@
+import axios, {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios';
+import { useAuthStore } from '@/store/authStore';
+
+// ---------------------------------------------------------------------------
+// Configuration
+// ---------------------------------------------------------------------------
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.benefitos.com';
+
+const DEFAULT_TIMEOUT = 15_000; // 15 seconds
+
+// ---------------------------------------------------------------------------
+// Create the base Axios instance
+// ---------------------------------------------------------------------------
+
+export const apiClient: AxiosInstance = axios.create({
+  baseURL: BASE_URL,
+  timeout: DEFAULT_TIMEOUT,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Request interceptor — attach auth token
+// ---------------------------------------------------------------------------
+
+apiClient.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = useAuthStore.getState().token;
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ---------------------------------------------------------------------------
+// Response interceptor — handle global errors (401, 5xx, etc.)
+// ---------------------------------------------------------------------------
+
+apiClient.interceptors.response.use(
+  (response: AxiosResponse) => response,
+  async (error) => {
+    const status = error?.response?.status;
+
+    if (status === 401) {
+      // Token expired — log the user out
+      useAuthStore.getState().logout();
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Helper wrappers with typed responses
+// ---------------------------------------------------------------------------
+
+export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  const response = await apiClient.get<T>(url, config);
+  return response.data;
+}
+
+export async function post<T, D = unknown>(
+  url: string,
+  data?: D,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  const response = await apiClient.post<T>(url, data, config);
+  return response.data;
+}
+
+export async function put<T, D = unknown>(
+  url: string,
+  data?: D,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  const response = await apiClient.put<T>(url, data, config);
+  return response.data;
+}
+
+export async function patch<T, D = unknown>(
+  url: string,
+  data?: D,
+  config?: AxiosRequestConfig
+): Promise<T> {
+  const response = await apiClient.patch<T>(url, data, config);
+  return response.data;
+}
+
+export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  const response = await apiClient.delete<T>(url, config);
+  return response.data;
+}
