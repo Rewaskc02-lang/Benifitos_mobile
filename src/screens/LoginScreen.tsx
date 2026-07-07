@@ -54,8 +54,39 @@ export function LoginScreen({ onNavigateToSignUp }: Props) {
     }
   };
 
-  const handleDemoLogin = () => {
-    handleLogin('rajesh@benefitos.dev', 'password123');
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await authService.login({
+        email: 'rajesh@benefitos.dev',
+        password: 'password123',
+      });
+      setToken(response.token);
+      setUser(response.user);
+    } catch (loginErr) {
+      console.log('[Demo Login] User rajesh@benefitos.dev not found, attempting auto-registration...');
+      try {
+        const regResponse = await authService.register({
+          name: 'Rajesh Kumar',
+          email: 'rajesh@benefitos.dev',
+          password: 'password123',
+          age: '21',
+          income: '180000',
+          state: 'Uttar Pradesh',
+        });
+        setToken(regResponse.token);
+        setUser(regResponse.user);
+      } catch (regErr: any) {
+        const msg =
+          regErr?.response?.data?.error ??
+          regErr?.message ??
+          'Demo access failed. Please try signing up manually.';
+        setError(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

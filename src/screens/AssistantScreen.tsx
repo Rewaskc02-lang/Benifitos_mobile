@@ -116,6 +116,18 @@ const SUGGESTION_CHIPS = [
   'Contact support',
 ];
 
+const LANGUAGES = [
+  { code: 'en-IN', label: 'English' },
+  { code: 'hi-IN', label: 'Hindi (हिंदी)' },
+  { code: 'ta-IN', label: 'Tamil (தமிழ்)' },
+  { code: 'te-IN', label: 'Telugu (తెలుగు)' },
+  { code: 'kn-IN', label: 'Kannada (ಕನ್ನಡ)' },
+  { code: 'ml-IN', label: 'Malayalam (മലയാളം)' },
+  { code: 'mr-IN', label: 'Marathi (मराठी)' },
+  { code: 'gu-IN', label: 'Gujarati (ગુજરાતી)' },
+  { code: 'bn-IN', label: 'Bengali (বাংলা)' },
+];
+
 export function AssistantScreen() {
   const { user } = useAuthStore();
   const tabBarHeight = useBottomTabBarHeight();
@@ -123,6 +135,7 @@ export function AssistantScreen() {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('hi-IN');
   const scrollRef = useRef<ScrollView>(null);
   const assistantAudioPlayerRef = useRef<ReturnType<typeof createAudioPlayer> | null>(null);
 
@@ -143,9 +156,9 @@ export function AssistantScreen() {
     };
   }, []);
 
-  const playAssistantReply = useCallback(async (replyText: string) => {
+  const playAssistantReply = useCallback(async (replyText: string, langCode: string) => {
     try {
-      const audioUri = await synthesizeSpeech(replyText, 'hi-IN');
+      const audioUri = await synthesizeSpeech(replyText, langCode);
       assistantAudioPlayerRef.current?.remove();
 
       const player = createAudioPlayer({ uri: audioUri });
@@ -187,7 +200,7 @@ export function AssistantScreen() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMsg]);
-      void playAssistantReply(response.answer);
+      void playAssistantReply(response.answer, selectedLang);
     } catch {
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -201,7 +214,7 @@ export function AssistantScreen() {
       setIsTyping(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, [isTyping, playAssistantReply, user?.id]);
+  }, [isTyping, playAssistantReply, user?.id, selectedLang]);
 
   useEffect(() => {
     if (isRecording) {
@@ -227,7 +240,7 @@ export function AssistantScreen() {
       // Send the file to Sarvam STT
       setIsTranscribing(true);
       try {
-        const transcript = await transcribeAudio(uri, 'hi-IN');
+        const transcript = await transcribeAudio(uri, selectedLang);
         // Drop the transcript into the input box, then fire the chat flow
         setInputText(transcript);
         await sendMessage(transcript);
@@ -250,7 +263,7 @@ export function AssistantScreen() {
       await recorder.prepareToRecordAsync();
       recorder.record();
     }
-  }, [isRecording, recorder, sendMessage]);
+  }, [isRecording, recorder, sendMessage, selectedLang]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -278,6 +291,28 @@ export function AssistantScreen() {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* Language Selector */}
+        <View className="px-6 pb-3 border-b border-border">
+          <Text className="text-text-muted text-xs font-bold uppercase tracking-wider mb-2 px-1">Assistant Language</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {LANGUAGES.map((lang) => {
+              const active = selectedLang === lang.code;
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  onPress={() => setSelectedLang(lang.code)}
+                  activeOpacity={0.8}
+                  className={`px-3 py-1.5 rounded-full border mr-2 ${active ? 'bg-primary border-primary' : 'bg-background-card border-border'}`}
+                >
+                  <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-text-secondary'}`}>
+                    {lang.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         {/* Messages */}

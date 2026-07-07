@@ -49,12 +49,21 @@ exports.getDocumentReadiness = async (citizenId) => {
     throw notFound;
   }
 
-  const total = result[0].total || 1;
-  const available = result[0].available || [];
-  const missing = result[0].missing || [];
+  const readiness = result[0].readiness || {};
+
+  const total = typeof readiness.total === "number" ? readiness.total : 0;
+
+  const available = Array.isArray(readiness.available)
+    ? readiness.available
+    : [];
+
+  const missing = Array.isArray(readiness.missing) ? readiness.missing : [];
+  const readinessPercentage =
+    total > 0 ? Math.round((available.length / total) * 100) : 100;
 
   return {
-    readinessPercentage: Math.round((available.length / total) * 100),
+    total,
+    readinessPercentage,
     available: available.map((name) => ({ name, verified: true })),
     missing: missing.map((name) => ({
       name,
@@ -71,3 +80,25 @@ exports.refreshRoadmapRelationships = (citizenId) =>
 
 exports.refreshRecommendationRelationships = (citizenId) =>
   welfareService.refreshRecommendationRelationships(citizenId);
+
+exports.getGraphVisual = async (citizenId) => {
+  const result = await citizenQueries.getGraphNodesAndRelationships(citizenId);
+  return (
+    result[0] || {
+      citizenId,
+      citizenName: "Unknown",
+      documents: [],
+      schemes: [],
+    }
+  );
+};
+
+exports.getSimilarCitizens = async (citizenId) => {
+  const similar = await citizenQueries.findSimilarCitizens(citizenId);
+  return { similar };
+};
+
+exports.getPredictiveEligibility = async (citizenId) => {
+  const predictions = await citizenQueries.getPredictiveEligibility(citizenId);
+  return { predictions };
+};

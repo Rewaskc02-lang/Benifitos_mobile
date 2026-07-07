@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Platform } from 'react-native';
+import { Platform, View, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 
 import { HomeScreen } from '@/screens/HomeScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
@@ -11,6 +12,7 @@ import { LoginScreen } from '@/screens/LoginScreen';
 import { SignUpScreen } from '@/screens/SignUpScreen';
 import { TabBarIcon } from '@/components/navigation/TabBarIcon';
 import { useAuthStore } from '@/store/authStore';
+import { authService } from '@/lib/api/services/authService';
 import { Palette } from '@/constants/theme';
 
 export type BottomTabParamList = {
@@ -64,11 +66,36 @@ function MainTabs() {
 }
 
 export function RootNavigator() {
-  const { isAuthenticated } = useAuthStore();
-  // Local state to toggle between Login and SignUp screens when unauthenticated.
-  // Keeping this as local state (not a Stack navigator) so we don't need to add
-  // a new Stack dependency just for two unauthenticated screens.
+  const { isAuthenticated, setToken, setUser, logout } = useAuthStore();
+  const [sessionRestored, setSessionRestored] = useState(false);
   const [showSignUp, setShowSignUp] = useState(false);
+
+  useEffect(() => {
+    async function restore() {
+      try {
+        const storedToken = await SecureStore.getItemAsync('auth_token');
+        if (storedToken) {
+          setToken(storedToken);
+          const currentUser = await authService.getMe();
+          setUser(currentUser);
+        }
+      } catch (err) {
+        console.warn("Restoring token failed, clearing storage:", err);
+        logout();
+      } finally {
+        setSessionRestored(true);
+      }
+    }
+    restore();
+  }, [setToken, setUser, logout]);
+
+  if (!sessionRestored) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Palette.background }}>
+        <ActivityIndicator color={Palette.primary} size="large" />
+      </View>
+    );
+  }
 
   if (!isAuthenticated) {
     if (showSignUp) {

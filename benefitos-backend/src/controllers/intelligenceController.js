@@ -56,3 +56,44 @@ exports.getFamilyOptimization = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getGraphVisual = async (req, res, next) => {
+  try {
+    const { citizenId } = req.params;
+    const result = await citizenService.getGraphVisual(citizenId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getSimilarCitizens = async (req, res, next) => {
+  try {
+    const { citizenId } = req.params;
+    const result = await citizenService.getSimilarCitizens(citizenId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getExplainEligibility = async (req, res, next) => {
+  try {
+    const { citizenId, schemeId } = req.params;
+    const result = await welfareService.getExplainEligibility(citizenId, schemeId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getPredictiveEligibility = async (req, res, next) => {
+  try {
+    const { citizenId } = req.params;
+    const result = await citizenService.getPredictiveEligibility(citizenId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+

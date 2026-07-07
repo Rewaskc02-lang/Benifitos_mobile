@@ -10,8 +10,10 @@ import { NotificationsScreen } from '@/screens/profile/NotificationsScreen';
 import { PrivacySecurityScreen } from '@/screens/profile/PrivacySecurityScreen';
 import { HelpSupportScreen } from '@/screens/profile/HelpSupportScreen';
 import { AboutScreen } from '@/screens/profile/AboutScreen';
+import { GraphVisualizer } from '@/screens/profile/GraphVisualizer';
+import { MyDocumentsScreen } from '@/screens/profile/MyDocumentsScreen';
 
-type SubScreen = 'account' | 'notifications' | 'privacy' | 'help' | 'about' | null;
+type SubScreen = 'account' | 'notifications' | 'privacy' | 'help' | 'about' | 'graph-visual' | 'documents' | null;
 
 export function ProfileScreen() {
   const { user, logout } = useAuthStore();
@@ -23,11 +25,15 @@ export function ProfileScreen() {
   if (activeScreen === 'privacy') return <PrivacySecurityScreen onBack={() => setActiveScreen(null)} />;
   if (activeScreen === 'help') return <HelpSupportScreen onBack={() => setActiveScreen(null)} />;
   if (activeScreen === 'about') return <AboutScreen onBack={() => setActiveScreen(null)} />;
+  if (activeScreen === 'graph-visual') return <GraphVisualizer onBack={() => setActiveScreen(null)} />;
+  if (activeScreen === 'documents') return <MyDocumentsScreen onBack={() => setActiveScreen(null)} />;
 
   const menuItems: { label: string; icon: string; screen: SubScreen }[] = [
     { label: 'Account Settings', icon: '⚙️', screen: 'account' },
     { label: 'Notifications', icon: '🔔', screen: 'notifications' },
+    { label: 'My Documents', icon: '📁', screen: 'documents' },
     { label: 'Privacy & Security', icon: '🔒', screen: 'privacy' },
+    { label: 'My Welfare Network', icon: '🕸️', screen: 'graph-visual' },
     { label: 'Help & Support', icon: '❓', screen: 'help' },
     { label: 'About', icon: 'ℹ️', screen: 'about' },
   ];

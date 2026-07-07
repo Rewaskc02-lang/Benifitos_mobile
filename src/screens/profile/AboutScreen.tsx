@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '@/constants/theme';
 
@@ -11,6 +11,17 @@ interface Props { onBack: () => void; }
 export function AboutScreen({ onBack }: Props) {
   const version = Constants.expoConfig?.version ?? '1.0.0';
   const buildYear = new Date().getFullYear();
+
+  useEffect(() => {
+    const onBackPress = () => {
+      onBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => {
+      subscription.remove();
+    };
+  }, [onBack]);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>

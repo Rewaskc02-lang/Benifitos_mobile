@@ -6,8 +6,8 @@ import type { WelfareScore } from '@/lib/api/services/welfareService';
 //   import { welfareService } from '@/lib/api/services/welfareService';
 //   const fetchFn = (id: string) => welfareService.getWelfareScore(id);
 // ---------------------------------------------------------------------------
-import { mockGetWelfareScore } from '@/lib/api/mockApi';
-const fetchFn = (citizenId: string) => mockGetWelfareScore(citizenId);
+import { welfareService } from '@/lib/api/services/welfareService';
+const fetchFn = (citizenId: string) => welfareService.getWelfareScore(citizenId);
 
 // ---------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "BenefitOS",
-    "slug": "benefitos-mobile",
+    "name": "Benifitos",
+    "slug": "benifitos-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,7 +12,7 @@
     },
     "userInterfaceStyle": "automatic",
     "android": {
-      "package": "com.benefitos.app",
+      "package": "com.benifitos.app",
       "adaptiveIcon": {
         "backgroundColor": "#0F0F1A",
         "foregroundImage": "./assets/adaptive-icon.png"
@@ -21,7 +21,7 @@
       "softwareKeyboardLayoutMode": "pan"
     },
     "ios": {
-      "bundleIdentifier": "com.benefitos.app"
+      "bundleIdentifier": "com.benifitos.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,10 +38,16 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1d0d9458-f8c7-4c91-87b5-b0dd0eee02c3"
+      }
     }
   }
 }

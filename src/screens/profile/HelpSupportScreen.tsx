@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking, LayoutAnimation,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Linking, LayoutAnimation, BackHandler
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '@/constants/theme';
@@ -32,6 +32,17 @@ interface Props { onBack: () => void; }
 
 export function HelpSupportScreen({ onBack }: Props) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      onBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => {
+      subscription.remove();
+    };
+  }, [onBack]);
 
   const toggle = (idx: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);

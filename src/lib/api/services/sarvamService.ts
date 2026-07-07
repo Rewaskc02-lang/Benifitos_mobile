@@ -14,10 +14,15 @@
  */
 
 import { EncodingType, File, Paths } from 'expo-file-system';
+import axios from 'axios';
 
 const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
 const SARVAM_TTS_URL = 'https://api.sarvam.ai/text-to-speech';
 const SARVAM_KEY = process.env.EXPO_PUBLIC_SARVAM_KEY ?? '';
+
+if (!SARVAM_KEY) {
+  console.error('[Sarvam Service] FATAL STARTUP CONFIG: EXPO_PUBLIC_SARVAM_KEY environment variable is missing.');
+}
 
 export type SarvamTranscribeResponse = {
   transcript?: string;
@@ -48,15 +53,13 @@ function getAudioFileMeta(fileUri: string) {
  * @param languageCode  BCP-47 code, defaults to 'hi-IN'
  * @returns         The transcript string
  */
-import axios from 'axios';
-
 export async function transcribeAudio(
   fileUri: string,
   languageCode = 'hi-IN'
 ): Promise<string> {
   if (!SARVAM_KEY) {
     throw new Error(
-      'EXPO_PUBLIC_SARVAM_KEY is not set. Add it to your .env file.'
+      'EXPO_PUBLIC_SARVAM_KEY is not set. Please configure EXPO_PUBLIC_SARVAM_KEY in your env settings.'
     );
   }
 
@@ -72,20 +75,40 @@ export async function transcribeAudio(
   form.append('language_code', languageCode);
   form.append('mode', 'transcribe');
 
-  const response = await axios.post(SARVAM_STT_URL, form, {
-    headers: {
-      'api-subscription-key': SARVAM_KEY,
-    },
-  });
+  let attempts = 0;
+  const maxAttempts = 3;
+  let lastErr: any = null;
 
-  const data = response.data as SarvamTranscribeResponse;
-  const transcript = data.transcript ?? data.text;
+  while (attempts < maxAttempts) {
+    try {
+      console.log(`[Sarvam STT] Attempt ${attempts + 1} sending transcription...`);
+      const response = await axios.post(SARVAM_STT_URL, form, {
+        headers: {
+          'api-subscription-key': SARVAM_KEY,
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 15000, // 15 seconds timeout
+      });
 
-  if (!transcript) {
-    throw new Error('Sarvam STT returned an empty transcript.');
+      const data = response.data as SarvamTranscribeResponse;
+      const transcript = data.transcript ?? data.text;
+
+      if (!transcript) {
+        throw new Error('Sarvam STT returned an empty transcript.');
+      }
+
+      return transcript.trim();
+    } catch (err: any) {
+      lastErr = err;
+      console.warn(`[Sarvam STT] Attempt ${attempts + 1} failed:`, err?.message ?? err);
+      attempts++;
+      if (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+      }
+    }
   }
 
-  return transcript.trim();
+  throw new Error(`Speech-to-Text transcription failed after 3 attempts. Details: ${lastErr?.message ?? lastErr}`);
 }
 
 /**
@@ -101,7 +124,7 @@ export async function synthesizeSpeech(
 ): Promise<string> {
   if (!SARVAM_KEY) {
     throw new Error(
-      'EXPO_PUBLIC_SARVAM_KEY is not set. Add it to your .env file.'
+      'EXPO_PUBLIC_SARVAM_KEY is not set. Please configure EXPO_PUBLIC_SARVAM_KEY in your env settings.'
     );
   }
 
@@ -110,32 +133,58 @@ export async function synthesizeSpeech(
     throw new Error('Cannot synthesize empty text.');
   }
 
-  const response = await fetch(SARVAM_TTS_URL, {
-    method: 'POST',
-    headers: {
-      'api-subscription-key': SARVAM_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text: trimmedText,
-      target_language_code: targetLanguageCode,
-      model: 'bulbul:v3',
-      output_audio_codec: 'wav',
-    }),
-  });
+  let attempts = 0;
+  const maxAttempts = 3;
+  let lastErr: any = null;
+  let audioBase64: string | undefined;
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    throw new Error(
-      `Sarvam TTS error ${response.status}: ${body || response.statusText}`
-    );
+  while (attempts < maxAttempts) {
+    try {
+      console.log(`[Sarvam TTS] Attempt ${attempts + 1} sending synthesis...`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+
+      const response = await fetch(SARVAM_TTS_URL, {
+        method: 'POST',
+        headers: {
+          'api-subscription-key': SARVAM_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: trimmedText,
+          target_language_code: targetLanguageCode,
+          model: 'bulbul:v3',
+          output_audio_codec: 'wav',
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const bodyText = await response.text().catch(() => '');
+        throw new Error(`TTS error status ${response.status}: ${bodyText || response.statusText}`);
+      }
+
+      const data = (await response.json()) as SarvamTextToSpeechResponse;
+      audioBase64 = data.audios?.[0];
+
+      if (!audioBase64) {
+        throw new Error('Sarvam TTS returned no audio base64 choices.');
+      }
+      break; // success
+    } catch (err: any) {
+      lastErr = err;
+      console.warn(`[Sarvam TTS] Attempt ${attempts + 1} failed:`, err?.message ?? err);
+      attempts++;
+      if (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+      }
+    }
   }
 
-  const data = (await response.json()) as SarvamTextToSpeechResponse;
-  const audioBase64 = data.audios?.[0];
-
   if (!audioBase64) {
-    throw new Error('Sarvam TTS returned no audio.');
+    throw new Error(`Text-to-Speech synthesis failed after 3 attempts. Details: ${lastErr?.message ?? lastErr}`);
   }
 
   const audioFile = new File(Paths.cache, `sarvam-reply-${Date.now()}.wav`);

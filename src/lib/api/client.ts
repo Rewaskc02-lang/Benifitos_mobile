@@ -10,7 +10,11 @@ import { useAuthStore } from '@/store/authStore';
 // Configuration
 // ---------------------------------------------------------------------------
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.benefitos.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+if (!BASE_URL) {
+  throw new Error("FATAL CONFIG ERROR: EXPO_PUBLIC_API_BASE_URL environment variable is missing.");
+}
 
 const DEFAULT_TIMEOUT = 15_000; // 15 seconds
 

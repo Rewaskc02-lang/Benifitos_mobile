@@ -157,3 +157,48 @@ exports.recalculateEligibility = (citizenId) =>
     `,
     { citizenId },
   );
+
+exports.findSimilarSchemes = (schemeId) =>
+  runQuery(
+    `
+    MATCH (s:Scheme {id: $schemeId})
+    OPTIONAL MATCH (s)-[:TARGETS_STAGE]->(stage:LifeStage)
+    OPTIONAL MATCH (s)-[:AVAILABLE_IN]->(state:State)
+    WITH s, stage, state
+    MATCH (similar:Scheme)
+    WHERE similar.id <> s.id
+      AND (
+        (stage IS NOT NULL AND (similar)-[:TARGETS_STAGE]->(stage))
+        OR (state IS NOT NULL AND (similar)-[:AVAILABLE_IN]->(state))
+      )
+    RETURN similar.id as id, similar.name as name, similar.financialBenefit as benefitAmount
+    LIMIT 5
+    `,
+    { schemeId }
+  );
+
+exports.checkExplainableEligibility = (citizenId, schemeId) =>
+  runQuery(
+    `
+    MATCH (c:Citizen {id: $citizenId}), (s:Scheme {id: $schemeId})
+    OPTIONAL MATCH (c)-[:CURRENT_STAGE]->(stage:LifeStage)
+    OPTIONAL MATCH (c)-[:RESIDES_IN]->(state:State)
+    RETURN
+      c.id as citizenId,
+      s.id as schemeId,
+      s.name as name,
+      c.age >= s.minAge AND c.age <= s.maxAge as ageValid,
+      c.age as citizenAge,
+      s.minAge as minAge,
+      s.maxAge as maxAge,
+      c.income <= s.maxIncome as incomeValid,
+      c.income as citizenIncome,
+      s.maxIncome as maxIncome,
+      (NOT EXISTS { MATCH (s)-[:AVAILABLE_IN]->(:State) } OR EXISTS { MATCH (s)-[:AVAILABLE_IN]->(state) }) as stateValid,
+      c.state as citizenState,
+      (NOT EXISTS { MATCH (s)-[:TARGETS_STAGE]->(:LifeStage) } OR EXISTS { MATCH (s)-[:TARGETS_STAGE]->(stage) }) as stageValid,
+      COALESCE(stage.name, c.stage) as citizenStage
+    `,
+    { citizenId, schemeId }
+  );
+

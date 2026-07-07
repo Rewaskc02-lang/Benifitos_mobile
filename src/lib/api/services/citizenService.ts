@@ -17,8 +17,54 @@ export type CitizenProfile = {
   family: FamilyMember[];
 };
 
+export type GraphNodeData = {
+  citizenId: string;
+  citizenName: string;
+  familyId: string | null;
+  familyName: string | null;
+  stageId: string | null;
+  stageName: string | null;
+  stateId: string | null;
+  stateName: string | null;
+  documents: Array<{ id: string; name: string; verified: boolean }>;
+  schemes: Array<{ id: string; name: string; benefit: number; type: string }>;
+};
+
+export type PredictionData = {
+  schemeName: string;
+  benefitAmount: number;
+  missingDocuments: string[];
+  requiredLifestage: string | null;
+};
+
 export const citizenService = {
   /** Fetch full profile + family members for a citizen. */
   getProfile: (citizenId: string) =>
     get<CitizenProfile>(`/api/citizen/${citizenId}`),
+
+  /** Fetch Neo4j graph nodes and relations dataset. */
+  getGraphVisual: (citizenId: string) =>
+    get<GraphNodeData>(`/api/graph-visual/${citizenId}`),
+
+  /** Fetch predictive eligibility metrics. */
+  getPredictiveEligibility: (citizenId: string) =>
+    get<{ predictions: PredictionData[] }>(`/api/predictive-eligibility/${citizenId}`),
+
+  /** Fetch family optimizer aggregate recommendations. */
+  getFamilyOptimization: (citizenId: string) =>
+    get<{
+      familyUniverse: Array<{
+        familyMember: string;
+        age: number;
+        activeBenefits: string[];
+        optimizedRecommendations: string[];
+        potentialExtraValue: number;
+      }>;
+      householdOptimization: {
+        familyName: string;
+        totalFamilyIncome: number;
+        intergenerationalBonusEligible: boolean;
+        familyLevelRecommendations: string[];
+      };
+    }>(`/api/family-optimizer/${citizenId}`),
 };

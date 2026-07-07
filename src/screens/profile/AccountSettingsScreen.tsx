@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator,
-  ScrollView, StyleSheet, Alert,
+  ScrollView, StyleSheet, Alert, BackHandler
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '@/constants/theme';
@@ -14,6 +14,17 @@ export function AccountSettingsScreen({ onBack }: Props) {
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name ?? '');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      onBack();
+      return true;
+    };
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => {
+      subscription.remove();
+    };
+  }, [onBack]);
 
   const handleSave = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Name cannot be empty'); return; }

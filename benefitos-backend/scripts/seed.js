@@ -1,10 +1,13 @@
 const neo4j = require("neo4j-driver");
+const bcrypt = require("bcryptjs");
 require("dotenv").config();
 
 const driver = neo4j.driver(
   process.env.NEO4J_URI,
   neo4j.auth.basic(process.env.NEO4J_USER, process.env.NEO4J_PASSWORD),
 );
+
+const hashedPass = bcrypt.hashSync("password123", 10);
 
 const states = [
   { id: "UP", name: "Uttar Pradesh" },
@@ -102,6 +105,8 @@ const citizens = [
     relationship: "Father",
     documentIds: ["doc-aadhaar", "doc-bank"],
     activeSchemeIds: [],
+    email: "mahesh@benefitos.dev",
+    password: hashedPass,
   },
   {
     id: "citizen_102",
@@ -115,6 +120,8 @@ const citizens = [
     relationship: "Mother",
     documentIds: ["doc-aadhaar", "doc-income"],
     activeSchemeIds: [],
+    email: "sunita@benefitos.dev",
+    password: hashedPass,
   },
   {
     id: "citizen_101",
@@ -128,6 +135,8 @@ const citizens = [
     relationship: "Student",
     documentIds: ["doc-aadhaar", "doc-income"],
     activeSchemeIds: ["sch-005"],
+    email: "rajesh@benefitos.dev",
+    password: hashedPass,
   },
   {
     id: "citizen_103",
@@ -141,6 +150,8 @@ const citizens = [
     relationship: "Grandmother",
     documentIds: ["doc-aadhaar", "doc-age"],
     activeSchemeIds: [],
+    email: "kamla@benefitos.dev",
+    password: hashedPass,
   },
 ];
 
@@ -254,7 +265,9 @@ const seed = async () => {
           c.age = citizen.age,
           c.income = citizen.income,
           c.state = citizen.state,
-          c.stage = stage.name
+          c.stage = stage.name,
+          c.email = citizen.email,
+          c.password = citizen.password
         WITH c, citizen, family, stage, state
         OPTIONAL MATCH (c)-[oldFamily:BELONGS_TO]->(:Family)
         DELETE oldFamily
