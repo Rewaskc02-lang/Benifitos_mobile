@@ -33,9 +33,9 @@ export const authService = {
   /** Fetch the current authenticated user's profile. */
   getMe: () => get<User>('/api/auth/me'),
 
-  /** Update the logged-in user's display name. */
-  updateName: (name: string) =>
-    put<User, { name: string }>('/api/auth/me', { name }),
+  /** Update the logged-in user's profile attributes. */
+  updateProfile: (profile: Partial<User>) =>
+    put<User, Partial<User>>('/api/auth/me', profile),
 
   /** Change password — requires old password to verify identity. */
   changePassword: (oldPassword: string, newPassword: string) =>

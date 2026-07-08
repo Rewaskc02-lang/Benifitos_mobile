@@ -1,7 +1,7 @@
 import { useRoadmap } from '@/hooks/useRoadmap';
 import { useAuthStore } from '@/store/authStore';
+import { SkeletonLoader } from '@/components/ui/SkeletonLoader';
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   Text,
@@ -228,11 +228,14 @@ export function RoadmapScreen() {
 
         {/* States */}
         {isLoading ? (
-          <View style={{ alignItems: 'center', paddingTop: 60 }}>
-            <ActivityIndicator color={Palette.primary} size="large" />
-            <Text style={{ color: Palette.textSecondary, fontSize: 13, marginTop: 12 }}>
-              Loading your roadmap…
-            </Text>
+          <View style={{ gap: 16, marginTop: 12, marginHorizontal: 24 }}>
+            {[1, 2, 3].map((item) => (
+              <View key={item} style={{ padding: 16, borderRadius: 20, backgroundColor: Palette.surface, borderWidth: 1, borderColor: Palette.border, gap: 8 }}>
+                <SkeletonLoader height={24} width="40%" />
+                <SkeletonLoader height={14} width="85%" />
+                <SkeletonLoader height={14} width="60%" />
+              </View>
+            ))}
           </View>
         ) : error ? (
           <View style={{ alignItems: 'center', paddingTop: 60, paddingHorizontal: 24 }}>

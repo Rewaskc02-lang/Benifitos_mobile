@@ -32,7 +32,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
   token: null,
 
-  setUser: (user) => set({ user, isAuthenticated: true }),
+  setUser: (user) => {
+    SecureStore.setItemAsync('auth_user', JSON.stringify(user)).catch(err => {
+      console.warn('Failed to save secure store auth user:', err);
+    });
+    set({ user, isAuthenticated: true });
+  },
   setToken: (token) => {
     SecureStore.setItemAsync('auth_token', token).catch(err => {
       console.warn('Failed to save secure store auth token:', err);
@@ -42,6 +47,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     SecureStore.deleteItemAsync('auth_token').catch(err => {
       console.warn('Failed to delete secure store auth token:', err);
+    });
+    SecureStore.deleteItemAsync('auth_user').catch(err => {
+      console.warn('Failed to delete secure store auth user:', err);
     });
     set({ user: null, isAuthenticated: false, token: null });
   },

@@ -265,3 +265,111 @@ ${contextString}`;
     );
   }
 };
+
+exports.transcribeAudio = async (audioBase64, languageCode = "hi-IN") => {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (!sarvamKey) {
+    throw new Error("Sarvam API key is not configured.");
+  }
+  if (!audioBase64) {
+    throw new Error("No audio payload provided.");
+  }
+
+  const audioBuffer = Buffer.from(audioBase64, "base64");
+  const fileBlob = new Blob([audioBuffer], { type: "audio/mp4" });
+  const form = new FormData();
+  form.append("file", fileBlob, "recording.m4a");
+  form.append("model", "saaras:v3");
+  form.append("language_code", languageCode);
+  form.append("mode", "transcribe");
+
+  let attempts = 0;
+  const maxAttempts = 3;
+  let lastErr = null;
+
+  while (attempts < maxAttempts) {
+    try {
+      console.log(`[Sarvam STT] Backend calling transcription API, attempt ${attempts + 1}...`);
+      const response = await fetch("https://api.sarvam.ai/speech-to-text", {
+        method: "POST",
+        headers: {
+          "api-subscription-key": sarvamKey,
+        },
+        body: form,
+      });
+
+      if (!response.ok) {
+        const bodyText = await response.text().catch(() => "");
+        throw new Error(`STT API status ${response.status}: ${bodyText}`);
+      }
+
+      const data = await response.json();
+      const transcript = data.transcript || data.text;
+      if (!transcript) {
+        throw new Error("Sarvam STT returned empty transcript.");
+      }
+      return transcript.trim();
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[Sarvam STT] Attempt ${attempts + 1} failed: ${err.message}`);
+      attempts++;
+      if (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+      }
+    }
+  }
+  throw new Error(`Speech-to-Text transcription failed: ${lastErr.message}`);
+};
+
+exports.synthesizeSpeech = async (text, targetLanguageCode = "hi-IN") => {
+  const sarvamKey = process.env.SARVAM_API_KEY;
+  if (!sarvamKey) {
+    throw new Error("Sarvam API key is not configured.");
+  }
+  if (!text || !text.trim()) {
+    throw new Error("Cannot synthesize empty text.");
+  }
+
+  let attempts = 0;
+  const maxAttempts = 3;
+  let lastErr = null;
+
+  while (attempts < maxAttempts) {
+    try {
+      console.log(`[Sarvam TTS] Backend calling speech synthesis API, attempt ${attempts + 1}...`);
+      const response = await fetch("https://api.sarvam.ai/text-to-speech", {
+        method: "POST",
+        headers: {
+          "api-subscription-key": sarvamKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: text.trim(),
+          target_language_code: targetLanguageCode,
+          model: "bulbul:v3",
+          output_audio_codec: "wav",
+        }),
+      });
+
+      if (!response.ok) {
+        const bodyText = await response.text().catch(() => "");
+        throw new Error(`TTS API status ${response.status}: ${bodyText}`);
+      }
+
+      const data = await response.json();
+      const audioBase64 = data.audios && data.audios[0];
+      if (!audioBase64) {
+        throw new Error("Sarvam TTS returned no audio data.");
+      }
+      return audioBase64;
+    } catch (err) {
+      lastErr = err;
+      console.warn(`[Sarvam TTS] Attempt ${attempts + 1} failed: ${err.message}`);
+      attempts++;
+      if (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
+      }
+    }
+  }
+  throw new Error(`Text-to-Speech synthesis failed: ${lastErr.message}`);
+};

@@ -50,9 +50,9 @@ export function AboutScreen({ onBack }: Props) {
             India has over 300 active central and state government welfare schemes —
             covering agriculture subsidies, education scholarships, healthcare coverage,
             pension programs, and housing support. The problem: most eligible citizens
-            never apply because they don't know the schemes exist or don't understand
+            never apply because they don&apos;t know the schemes exist or don&apos;t understand
             if they qualify.{'\n\n'}
-            BenefitOS solves this with a graph intelligence engine. We map every scheme's
+            BenefitOS solves this with a graph intelligence engine. We map every scheme&apos;s
             eligibility criteria — income ceiling, age range, life stage, state availability
             — as relationships in a Neo4j graph. When you log in, the graph traversal finds
             every scheme your profile satisfies in real time, calculates your Welfare Score,

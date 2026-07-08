@@ -144,10 +144,10 @@ exports.getMe = async (req, res, next) => {
   }
 };
 
-exports.updateName = async (req, res, next) => {
+exports.updateProfile = async (req, res, next) => {
   try {
     const citizenId = req.user.id;
-    const { name } = req.body;
+    const { name, age, income, state, stage } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: "Name cannot be empty" });
@@ -161,13 +161,18 @@ exports.updateName = async (req, res, next) => {
     const secureCitizen = secureCitizens[0];
     const profile = {
       name: name.trim(),
-      age: secureCitizen.age,
-      income: secureCitizen.income,
-      state: secureCitizen.state,
-      stage: secureCitizen.stage,
+      age: age !== undefined ? Number(age) : secureCitizen.age,
+      income: income !== undefined ? Number(income) : secureCitizen.income,
+      state: state !== undefined ? state : secureCitizen.state,
+      stage: stage !== undefined ? stage : secureCitizen.stage,
     };
 
     await citizenQueries.upsertCitizenProfile(citizenId, profile);
+
+    // Refresh graph intelligence
+    await welfareService.recalculateEligibility(citizenId);
+    await roadmapService.refreshRoadmapRelationships(citizenId);
+    await welfareService.refreshRecommendationRelationships(citizenId);
 
     res.json({
       id: citizenId,

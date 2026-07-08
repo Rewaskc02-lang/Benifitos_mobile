@@ -1,4 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   ActivityIndicator, RefreshControl, Alert, BackHandler
@@ -29,7 +33,7 @@ export function GraphVisualizer({ onBack }: Props) {
     };
   }, [onBack]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!user?.id) return;
     try {
       const [gData, pData] = await Promise.all([
@@ -45,11 +49,13 @@ export function GraphVisualizer({ onBack }: Props) {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    fetchData();
-  }, [user?.id]);
+    Promise.resolve().then(() => {
+      fetchData();
+    });
+  }, [fetchData]);
 
   const onRefresh = () => {
     setRefreshing(true);

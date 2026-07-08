@@ -1,10 +1,13 @@
-import axios, {
+import {
   AxiosInstance,
   AxiosRequestConfig,
   AxiosResponse,
   InternalAxiosRequestConfig,
+  default as axios,
 } from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/store/authStore';
+import { useNetworkStore } from '@/store/networkStore';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -69,8 +72,32 @@ apiClient.interceptors.response.use(
 // ---------------------------------------------------------------------------
 
 export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-  const response = await apiClient.get<T>(url, config);
-  return response.data;
+  const { setIsOffline } = useNetworkStore.getState();
+  try {
+    const response = await apiClient.get<T>(url, config);
+    const cacheKey = `@cache:${url}`;
+    await AsyncStorage.setItem(cacheKey, JSON.stringify(response.data)).catch(err => {
+      console.warn('[Offline Cache] Failed to write cache:', err);
+    });
+    setIsOffline(false);
+    return response.data;
+  } catch (error: any) {
+    const isNetworkError = !error.response || error.code === 'ECONNABORTED' || error.message.includes('Network Error');
+    if (isNetworkError) {
+      setIsOffline(true);
+      const cacheKey = `@cache:${url}`;
+      const cached = await AsyncStorage.getItem(cacheKey).catch(() => null);
+      if (cached) {
+        console.log(`[Offline Cache] Serving cached data for GET: ${url}`);
+        const parsed = JSON.parse(cached);
+        if (typeof parsed === 'object' && parsed !== null) {
+          parsed._isOfflineCached = true;
+        }
+        return parsed as T;
+      }
+    }
+    throw error;
+  }
 }
 
 export async function post<T, D = unknown>(
@@ -78,8 +105,18 @@ export async function post<T, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  const response = await apiClient.post<T>(url, data, config);
-  return response.data;
+  const { setIsOffline } = useNetworkStore.getState();
+  try {
+    const response = await apiClient.post<T, AxiosResponse<T>, D>(url, data, config);
+    setIsOffline(false);
+    return response.data;
+  } catch (error: any) {
+    const isNetworkError = !error.response || error.code === 'ECONNABORTED' || error.message.includes('Network Error');
+    if (isNetworkError) {
+      setIsOffline(true);
+    }
+    throw error;
+  }
 }
 
 export async function put<T, D = unknown>(
@@ -87,8 +124,18 @@ export async function put<T, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  const response = await apiClient.put<T>(url, data, config);
-  return response.data;
+  const { setIsOffline } = useNetworkStore.getState();
+  try {
+    const response = await apiClient.put<T, AxiosResponse<T>, D>(url, data, config);
+    setIsOffline(false);
+    return response.data;
+  } catch (error: any) {
+    const isNetworkError = !error.response || error.code === 'ECONNABORTED' || error.message.includes('Network Error');
+    if (isNetworkError) {
+      setIsOffline(true);
+    }
+    throw error;
+  }
 }
 
 export async function patch<T, D = unknown>(
@@ -96,11 +143,31 @@ export async function patch<T, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  const response = await apiClient.patch<T>(url, data, config);
-  return response.data;
+  const { setIsOffline } = useNetworkStore.getState();
+  try {
+    const response = await apiClient.patch<T, AxiosResponse<T>, D>(url, data, config);
+    setIsOffline(false);
+    return response.data;
+  } catch (error: any) {
+    const isNetworkError = !error.response || error.code === 'ECONNABORTED' || error.message.includes('Network Error');
+    if (isNetworkError) {
+      setIsOffline(true);
+    }
+    throw error;
+  }
 }
 
 export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-  const response = await apiClient.delete<T>(url, config);
-  return response.data;
+  const { setIsOffline } = useNetworkStore.getState();
+  try {
+    const response = await apiClient.delete<T>(url, config);
+    setIsOffline(false);
+    return response.data;
+  } catch (error: any) {
+    const isNetworkError = !error.response || error.code === 'ECONNABORTED' || error.message.includes('Network Error');
+    if (isNetworkError) {
+      setIsOffline(true);
+    }
+    throw error;
+  }
 }

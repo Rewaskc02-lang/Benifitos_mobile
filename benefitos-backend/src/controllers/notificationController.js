@@ -10,6 +10,16 @@ exports.getNotifications = async (req, res, next) => {
   }
 };
 
+exports.markAllRead = async (req, res, next) => {
+  try {
+    const { citizenId } = req.params;
+    const result = await notificationQueries.markAllNotificationsRead(citizenId);
+    res.json({ status: "Success", message: "All notifications marked as read." });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.markRead = async (req, res, next) => {
   try {
     const { notificationId } = req.params;

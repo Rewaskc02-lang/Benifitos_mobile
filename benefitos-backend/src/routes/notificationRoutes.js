@@ -6,6 +6,7 @@ const rateLimiter = require("../middleware/rateLimiter");
 
 // Secure notification endpoints
 router.get("/notifications/:citizenId", authMiddleware, authMiddleware.authorizeCitizen, rateLimiter.graphLimiter, notifCtrl.getNotifications);
+router.put("/notifications/read-all/:citizenId", authMiddleware, authMiddleware.authorizeCitizen, rateLimiter.graphLimiter, notifCtrl.markAllRead);
 router.put("/notifications/:notificationId/read", authMiddleware, rateLimiter.graphLimiter, notifCtrl.markRead);
 router.delete("/notifications/:notificationId", authMiddleware, rateLimiter.graphLimiter, notifCtrl.deleteNotification);
 

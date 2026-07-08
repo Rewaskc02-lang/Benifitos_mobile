@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { BottomTabParamList } from '@/navigation/RootNavigator';
 import { useAuthStore } from '@/store/authStore';
 import { Palette } from '@/constants/theme';
 
@@ -15,9 +18,25 @@ import { MyDocumentsScreen } from '@/screens/profile/MyDocumentsScreen';
 
 type SubScreen = 'account' | 'notifications' | 'privacy' | 'help' | 'about' | 'graph-visual' | 'documents' | null;
 
+type ProfileRouteProp = RouteProp<BottomTabParamList, 'Profile'>;
+type ProfileNavProp = BottomTabNavigationProp<BottomTabParamList, 'Profile'>;
+
 export function ProfileScreen() {
   const { user, logout } = useAuthStore();
   const [activeScreen, setActiveScreen] = useState<SubScreen>(null);
+  const route = useRoute<ProfileRouteProp>();
+  const navigation = useNavigation<ProfileNavProp>();
+
+  // Detect and apply screen routing parameter
+  useEffect(() => {
+    if (route.params?.screen) {
+      const screenParam = route.params.screen;
+      Promise.resolve().then(() => {
+        setActiveScreen(screenParam);
+        navigation.setParams({ screen: undefined });
+      });
+    }
+  }, [route.params?.screen, navigation]);
 
   // Render sub-screens inside the same ProfileScreen render cycle — no Stack needed
   if (activeScreen === 'account') return <AccountSettingsScreen onBack={() => setActiveScreen(null)} />;
@@ -68,21 +87,23 @@ export function ProfileScreen() {
           </View>
         </View>
 
-        {/* Stats — placeholder values until Phase 5 surfaces live counts */}
+        {/* Stats — clickable shortcuts */}
         <View className="mx-6 flex-row gap-3 mb-8">
           {[
-            { label: 'Schemes', value: '—' },
-            { label: 'Roadmap', value: '✓' },
-            { label: 'Graph', value: '🔗' },
+            { label: 'Schemes', value: '📋', onPress: () => navigation.navigate('Roadmap') },
+            { label: 'Roadmap', value: '🗺️', onPress: () => navigation.navigate('Roadmap') },
+            { label: 'Graph', value: '🔗', onPress: () => setActiveScreen('graph-visual') },
           ].map((s) => (
-            <View
+            <TouchableOpacity
               key={s.label}
               className="flex-1 rounded-2xl bg-background-card p-4 items-center"
               style={{ borderWidth: 1, borderColor: Palette.border }}
+              activeOpacity={0.7}
+              onPress={s.onPress}
             >
               <Text className="text-primary text-2xl font-bold">{s.value}</Text>
               <Text className="text-text-muted text-xs mt-1">{s.label}</Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
 

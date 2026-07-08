@@ -26,8 +26,8 @@ export type GraphNodeData = {
   stageName: string | null;
   stateId: string | null;
   stateName: string | null;
-  documents: Array<{ id: string; name: string; verified: boolean }>;
-  schemes: Array<{ id: string; name: string; benefit: number; type: string }>;
+  documents: { id: string; name: string; verified: boolean }[];
+  schemes: { id: string; name: string; benefit: number; type: string }[];
 };
 
 export type PredictionData = {
@@ -53,13 +53,13 @@ export const citizenService = {
   /** Fetch family optimizer aggregate recommendations. */
   getFamilyOptimization: (citizenId: string) =>
     get<{
-      familyUniverse: Array<{
+      familyUniverse: {
         familyMember: string;
         age: number;
         activeBenefits: string[];
         optimizedRecommendations: string[];
         potentialExtraValue: number;
-      }>;
+      }[];
       householdOptimization: {
         familyName: string;
         totalFamilyIncome: number;

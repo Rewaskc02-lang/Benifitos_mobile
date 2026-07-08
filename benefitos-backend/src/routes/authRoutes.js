@@ -12,7 +12,7 @@ router.post("/auth/logout", authCtrl.logout);
 
 // Protected routes
 router.get("/auth/me", authMiddleware, authCtrl.getMe);
-router.put("/auth/me", authMiddleware, authCtrl.updateName);
+router.put("/auth/me", authMiddleware, authCtrl.updateProfile);
 router.put("/auth/password", authMiddleware, authCtrl.changePassword);
 
 module.exports = router;

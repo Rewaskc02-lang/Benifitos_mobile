@@ -40,7 +40,9 @@ export function useMissedBenefits(citizenId: string) {
   }, [citizenId]);
 
   useEffect(() => {
-    refetch();
+    Promise.resolve().then(() => {
+      refetch();
+    });
   }, [refetch]);
 
   return { ...state, refetch };

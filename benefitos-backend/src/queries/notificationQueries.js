@@ -50,3 +50,12 @@ exports.deleteNotification = async (notificationId) => {
   `;
   return db.runQuery(query, { notificationId });
 };
+
+exports.markAllNotificationsRead = async (citizenId) => {
+  const query = `
+    MATCH (c:Citizen { id: $citizenId })-[:HAS_NOTIFICATION]->(n:Notification { read: false })
+    SET n.read = true
+    RETURN n
+  `;
+  return db.runQuery(query, { citizenId });
+};

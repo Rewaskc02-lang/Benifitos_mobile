@@ -45,7 +45,9 @@ export function useWelfareScore(citizenId: string) {
   }, [citizenId]);
 
   useEffect(() => {
-    refetch();
+    Promise.resolve().then(() => {
+      refetch();
+    });
   }, [refetch]);
 
   return { ...state, refetch };

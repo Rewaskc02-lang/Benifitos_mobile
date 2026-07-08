@@ -18,6 +18,10 @@ export const notificationService = {
   markAsRead: (notificationId: string) =>
     put<{ status: string; notification: Notification }>(`/api/notifications/${notificationId}/read`),
 
+  /** Mark all notifications for a citizen as read. */
+  markAllRead: (citizenId: string) =>
+    put<{ status: string; message: string }>(`/api/notifications/read-all/${citizenId}`),
+
   /** Delete a notification permanently. */
   deleteNotification: (notificationId: string) =>
     del<{ status: string; message: string }>(`/api/notifications/${notificationId}`),

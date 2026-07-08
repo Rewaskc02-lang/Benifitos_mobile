@@ -5,11 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0F0F1A"
-    },
     "userInterfaceStyle": "automatic",
     "android": {
       "package": "com.benifitos.app",
@@ -18,12 +13,22 @@
         "foregroundImage": "./assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false,
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA"
+      ]
     },
     "ios": {
-      "bundleIdentifier": "com.benifitos.app"
+      "bundleIdentifier": "com.benifitos.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app requires microphone access to transcribe voice queries into welfare assistant commands.",
+        "NSCameraUsageDescription": "This app requires camera access to scan physical document details for AI-driven verification."
+      }
     },
     "web": {
+      "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
@@ -39,7 +44,8 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-asset"
     ],
     "experiments": {
       "reactCompiler": true

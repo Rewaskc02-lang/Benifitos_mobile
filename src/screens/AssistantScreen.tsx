@@ -1,6 +1,7 @@
 import { synthesizeSpeech, transcribeAudio } from '@/lib/api/services/sarvamService';
 import { Palette } from '@/constants/theme';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   AudioQuality,
   createAudioPlayer,
@@ -56,7 +57,7 @@ const RECORDING_OPTIONS = {
 // Animated typing dots
 // ---------------------------------------------------------------------------
 function TypingDots() {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+  const [dots] = useState(() => [new Animated.Value(0), new Animated.Value(0), new Animated.Value(0)]);
 
   useEffect(() => {
     const animations = dots.map((dot, i) =>
@@ -71,7 +72,7 @@ function TypingDots() {
     );
     animations.forEach((a) => a.start());
     return () => animations.forEach((a) => a.stop());
-  }, []);
+  }, [dots]);
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 4 }}>
@@ -147,7 +148,7 @@ export function AssistantScreen() {
   const isRecording = recorderState.isRecording;
 
   // Animated pulse for the recording indicator
-  const recordPulse = useRef(new Animated.Value(1)).current;
+  const [recordPulse] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
     return () => {
@@ -155,6 +156,35 @@ export function AssistantScreen() {
       assistantAudioPlayerRef.current = null;
     };
   }, []);
+
+  // Load cached assistant chat history
+  useEffect(() => {
+    AsyncStorage.getItem('@benefitos_assistant_chat').then((val) => {
+      if (val) {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const loaded = parsed.map((m: any) => ({
+              ...m,
+              timestamp: new Date(m.timestamp),
+            }));
+            setMessages(loaded);
+          }
+        } catch (e) {
+          console.warn('Failed to parse cached assistant chat history', e);
+        }
+      }
+    });
+  }, []);
+
+  // Save messages to AsyncStorage cache
+  useEffect(() => {
+    if (messages.length > 1) {
+      AsyncStorage.setItem('@benefitos_assistant_chat', JSON.stringify(messages)).catch((err) => {
+        console.warn('Failed to cache assistant chat history', err);
+      });
+    }
+  }, [messages]);
 
   const playAssistantReply = useCallback(async (replyText: string, langCode: string) => {
     try {
@@ -214,7 +244,7 @@ export function AssistantScreen() {
       setIsTyping(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, [isTyping, playAssistantReply, user?.id, selectedLang]);
+  }, [isTyping, playAssistantReply, user, selectedLang]);
 
   useEffect(() => {
     if (isRecording) {
@@ -228,7 +258,7 @@ export function AssistantScreen() {
       recordPulse.stopAnimation();
       recordPulse.setValue(1);
     }
-  }, [isRecording]);
+  }, [isRecording, recordPulse]);
 
   const toggleRecording = useCallback(async () => {
     if (isRecording) {

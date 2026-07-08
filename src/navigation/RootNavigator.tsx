@@ -17,7 +17,7 @@ import { Palette } from '@/constants/theme';
 
 export type BottomTabParamList = {
   Home: undefined;
-  Profile: undefined;
+  Profile: { screen?: 'account' | 'notifications' | 'privacy' | 'help' | 'about' | 'graph-visual' | 'documents' } | undefined;
   Roadmap: undefined;
   Assistant: undefined;
 };
@@ -74,15 +74,37 @@ export function RootNavigator() {
     async function restore() {
       try {
         const storedToken = await SecureStore.getItemAsync('auth_token');
+        const storedUser = await SecureStore.getItemAsync('auth_user');
+        
         if (storedToken) {
           setToken(storedToken);
-          const currentUser = await authService.getMe();
-          setUser(currentUser);
+          if (storedUser) {
+            try {
+              setUser(JSON.parse(storedUser));
+            } catch (e) {
+              console.warn("Failed to parse stored user:", e);
+            }
+          }
+          
+          // Instantly boot if we have a token
+          setSessionRestored(true);
+          
+          // Refresh user session in background
+          try {
+            const freshUser = await authService.getMe();
+            setUser(freshUser);
+          } catch (err: any) {
+            console.log("[RootNavigator] Background profile sync skipped:", err.message);
+            if (err.response?.status === 401 || err.response?.status === 403) {
+              logout();
+            }
+          }
+        } else {
+          setSessionRestored(true);
         }
       } catch (err) {
         console.warn("Restoring token failed, clearing storage:", err);
         logout();
-      } finally {
         setSessionRestored(true);
       }
     }

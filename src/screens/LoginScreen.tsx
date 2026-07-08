@@ -64,7 +64,7 @@ export function LoginScreen({ onNavigateToSignUp }: Props) {
       });
       setToken(response.token);
       setUser(response.user);
-    } catch (loginErr) {
+    } catch {
       console.log('[Demo Login] User rajesh@benefitos.dev not found, attempting auto-registration...');
       try {
         const regResponse = await authService.register({
@@ -192,7 +192,7 @@ export function LoginScreen({ onNavigateToSignUp }: Props) {
               disabled={loading}
             >
               <Text style={styles.signUpLinkText}>
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Text style={styles.signUpLinkAccent}>Sign up</Text>
               </Text>
             </TouchableOpacity>

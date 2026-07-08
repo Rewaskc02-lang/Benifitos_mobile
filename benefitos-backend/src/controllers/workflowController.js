@@ -22,6 +22,36 @@ exports.handleAssistantStream = async (req, res, next) => {
   }
 };
 
+exports.handleTranscribe = async (req, res, next) => {
+  try {
+    const { audio, languageCode } = req.body;
+    const transcript = await assistantService.transcribeAudio(audio, languageCode);
+    res.json({ transcript });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.handleSynthesize = async (req, res, next) => {
+  try {
+    const { text, targetLanguageCode } = req.body;
+    const audio = await assistantService.synthesizeSpeech(text, targetLanguageCode);
+    res.json({ audio });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.verifyDocument = async (req, res, next) => {
+  try {
+    const { citizenId, documentName } = req.body;
+    const result = await citizenService.verifyDocumentWorkflow(citizenId, documentName);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.triggerWelfareWorkflow = async (req, res, next) => {
   try {
     const citizenId = req.body.citizenId;

@@ -102,3 +102,16 @@ exports.getPredictiveEligibility = async (citizenId) => {
   const predictions = await citizenQueries.getPredictiveEligibility(citizenId);
   return { predictions };
 };
+
+exports.verifyDocumentWorkflow = async (citizenId, documentName) => {
+  await citizenQueries.verifyDocumentForCitizen(citizenId, documentName);
+  const workflowService = require("./workflowService");
+  const recalculationResult = await workflowService.runRecalculationWorkflowForCitizen(citizenId);
+  const readiness = await exports.getDocumentReadiness(citizenId);
+  return {
+    status: "Success",
+    message: `Document "${documentName}" verified successfully. Welfare score recalculated.`,
+    readiness,
+    notificationsGenerated: recalculationResult.notificationsGenerated
+  };
+};

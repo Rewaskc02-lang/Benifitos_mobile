@@ -21,7 +21,9 @@ export function useCitizenProfile(citizenId: string) {
   }, [citizenId]);
 
   useEffect(() => {
-    fetch();
+    Promise.resolve().then(() => {
+      fetch();
+    });
   }, [fetch]);
 
   return { data, isLoading, error, refetch: fetch };

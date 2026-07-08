@@ -121,7 +121,7 @@ export function MissedBenefitsSection({
             marginBottom: 16,
           }}
         >
-          Schemes you're missing
+          Schemes you&apos;re missing
         </Text>
         <ActivityIndicator color={Palette.primary} />
       </View>
@@ -150,7 +150,7 @@ export function MissedBenefitsSection({
             flex: 1,
           }}
         >
-          Schemes you're missing
+          Schemes you&apos;re missing
         </Text>
         {/* Count badge */}
         <View

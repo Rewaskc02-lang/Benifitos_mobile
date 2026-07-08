@@ -27,7 +27,7 @@ exports.runRecalculationWorkflowForCitizen = async (citizenId) => {
       await notificationQueries.createNotification(citizenId, {
         type: "newly_eligible",
         title: "New Scheme Unlocked! 🎉",
-        message: `You are newly eligible to apply for "${scheme.name}" representing ₹${scheme.benefit.toLocaleString()} in potential benefits.`,
+        message: `You are newly eligible to apply for "${scheme.name}" representing ₹${(scheme.benefitAmount || 0).toLocaleString()} in potential benefits.`,
       }).catch(err => console.error("[Workflow] Failed to save newly_eligible notification:", err.message));
       newNotifsCount++;
     }

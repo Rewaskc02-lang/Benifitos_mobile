@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useAuthStore } from '@/store/authStore';
+import { useNetworkStore } from '@/store/networkStore';
 import { useWelfareScore } from '@/hooks/useWelfareScore';
 import { useMissedBenefits } from '@/hooks/useMissedBenefits';
 import { WelfareScoreCard } from '@/components/ui/WelfareScoreCard';
@@ -22,6 +23,7 @@ export function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const isFocused = useIsFocused();
   const { user } = useAuthStore();
+  const { isOffline } = useNetworkStore();
   const citizenId = user?.id ?? CITIZEN_ID_FALLBACK;
 
   const { data, isLoading, error, refetch } = useWelfareScore(citizenId);
@@ -50,10 +52,16 @@ export function HomeScreen() {
       if (fOpt) setFamilyOpt(fOpt.householdOptimization);
       if (preds) setPredictions(preds.predictions || []);
       if (read) {
-        setReadiness(read);
+        const available = (read.available || []).map((d: any) => typeof d === 'object' ? d.name : d);
+        const missing = (read.missing || []).map((d: any) => typeof d === 'object' ? d.name : d);
+        setReadiness({
+          total: read.total ?? 0,
+          available,
+          missing,
+        });
       } else {
         setReadiness({
-          readinessPercentage: 0,
+          total: 0,
           available: [],
           missing: [],
         });
@@ -63,7 +71,7 @@ export function HomeScreen() {
         setHasUnread(unread);
       }
     });
-  }, [citizenId, isFocused]);
+  }, [citizenId, isFocused, refetch, refetchMissed]);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
@@ -72,12 +80,19 @@ export function HomeScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Offline Mode Banner */}
+        {isOffline && (
+          <View style={{ backgroundColor: '#fff7ed', borderBottomWidth: 1, borderBottomColor: '#ffedd5', paddingVertical: 10, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#c2410c', fontSize: 13, fontWeight: '700' }}>⚠️ Offline Mode. Showing last synced information.</Text>
+          </View>
+        )}
+
         {/* Header */}
-        <View className="px-6 pt-6 pb-4">
-          <Text className="text-text-secondary text-sm font-semibold tracking-widest uppercase mb-1">
+        <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16 }}>
+          <Text style={{ color: Palette.textSecondary, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
             Welcome back
           </Text>
-          <Text className="text-text-primary text-3xl font-bold">
+          <Text style={{ color: Palette.textPrimary, fontSize: 30, fontWeight: '800' }}>
             {user?.name ?? 'Dashboard'}
           </Text>
         </View>
@@ -86,7 +101,7 @@ export function HomeScreen() {
         {hasUnread && (
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('Profile')}
+            onPress={() => navigation.navigate('Profile', { screen: 'notifications' })}
             style={s.alertBar}
           >
             <Text style={s.alertText}>🔔 You have unread welfare notifications! Tap to read.</Text>
@@ -121,7 +136,7 @@ export function HomeScreen() {
                 )}
               </View>
               <TouchableOpacity
-                onPress={() => navigation.navigate('Profile')}
+                onPress={() => navigation.navigate('Profile', { screen: 'documents' })}
                 style={s.widgetBtn}
               >
                 <Text style={s.widgetBtnText}>Upload</Text>
@@ -147,7 +162,11 @@ export function HomeScreen() {
 
         {/* Predictive eligibility pathway widget */}
         {predictions.length > 0 && (
-          <View style={[s.widgetCard, { borderColor: '#60a5fa' }]}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Profile', { screen: 'documents' })}
+            style={[s.widgetCard, { borderColor: '#60a5fa' }]}
+          >
             <Text style={[s.widgetHeader, { color: '#2563eb' }]}>⏱️ Future Eligible Pathways</Text>
             <Text style={s.widgetTitle}>
               {predictions[0].schemeName}
@@ -155,7 +174,7 @@ export function HomeScreen() {
             <Text style={s.widgetSubtitle}>
               Unlock this scheme representing +₹{predictions[0].benefitAmount.toLocaleString()} by uploading missing documents.
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
 
         {/* Missed Benefits */}
@@ -168,21 +187,22 @@ export function HomeScreen() {
         {/* Quick Actions */}
         <View className="px-6 mt-6">
           <Text className="text-text-primary font-semibold text-lg mb-4">Quick Actions</Text>
-          <View className="flex-row gap-3">
+          <View className="flex-row flex-wrap justify-between gap-y-3">
             {([
-              { label: 'Roadmap', emoji: '🗺️', tab: 'Roadmap' },
-              { label: 'Assistant', emoji: '🤖', tab: 'Assistant' },
-              { label: 'Profile', emoji: '👤', tab: 'Profile' },
-            ] as { label: string; emoji: string; tab: keyof BottomTabParamList }[]).map((action) => (
+              { label: 'Roadmap', emoji: '🗺️', onPress: () => navigation.navigate('Roadmap') },
+              { label: 'Assistant', emoji: '🤖', onPress: () => navigation.navigate('Assistant') },
+              { label: 'My Graph', emoji: '🕸️', onPress: () => navigation.navigate('Profile', { screen: 'graph-visual' }) },
+              { label: 'Upload Docs', emoji: '📁', onPress: () => navigation.navigate('Profile', { screen: 'documents' }) },
+            ]).map((action) => (
               <TouchableOpacity
                 key={action.label}
-                className="flex-1 rounded-2xl bg-background-card p-4 items-center"
-                style={{ borderWidth: 1, borderColor: Palette.border }}
+                style={{ width: '48%', borderWidth: 1, borderColor: Palette.border }}
+                className="rounded-2xl bg-background-card p-4 items-center"
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate(action.tab)}
+                onPress={action.onPress}
               >
                 <Text className="text-2xl mb-2">{action.emoji}</Text>
-                <Text className="text-text-secondary text-xs font-medium">{action.label}</Text>
+                <Text className="text-text-secondary text-xs font-semibold text-center">{action.label}</Text>
               </TouchableOpacity>
             ))}
           </View>

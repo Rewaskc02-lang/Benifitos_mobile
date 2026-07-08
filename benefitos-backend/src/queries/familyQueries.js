@@ -74,6 +74,9 @@ WITH
 
 WITH
   family,
+  [m IN rawMembers WHERE m IS NOT NULL] AS members
+WITH
+  family,
   members,
   reduce(total = 0, m IN members | total + m.income) AS totalFamilyIncome
 

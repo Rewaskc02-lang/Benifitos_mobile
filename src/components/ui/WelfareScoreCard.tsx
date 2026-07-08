@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import type { WelfareScore } from '@/lib/api/services/welfareService';
 import { Palette } from '@/constants/theme';
+import { SkeletonLoader } from './SkeletonLoader';
 
 // ---------------------------------------------------------------------------
 // Ring constants
@@ -135,11 +136,10 @@ export function WelfareScoreCard({
       {/* Card body */}
       <View style={{ padding: 20 }}>
         {isLoading ? (
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <ActivityIndicator color={Palette.primary} size="large" />
-            <Text style={{ color: Palette.textSecondary, fontSize: 13, marginTop: 12 }}>
-              Loading your score…
-            </Text>
+          <View style={{ gap: 12, paddingVertical: 10 }}>
+            <SkeletonLoader height={24} width="40%" />
+            <SkeletonLoader height={72} width="100%" borderRadius={16} />
+            <SkeletonLoader height={48} width="100%" borderRadius={12} />
           </View>
         ) : error ? (
           <View style={{ alignItems: 'center', paddingVertical: 28 }}>
