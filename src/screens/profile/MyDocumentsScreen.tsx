@@ -580,48 +580,48 @@ export function MyDocumentsScreen({ onBack }: Props) {
 
               {/* CAMERA VIEWPORT MODE */}
               {modalMode === 'camera' && (
-                <View style={{ height: Dimensions.get('window').height * 0.8, backgroundColor: '#000', borderRadius: 24, overflow: 'hidden' }}>
+                <View style={{ height: Dimensions.get('window').height * 0.8, backgroundColor: '#000', borderRadius: 24, overflow: 'hidden', position: 'relative' }}>
                   {/* Real CameraView from expo-camera */}
                   <CameraView
-                    style={{ flex: 1 }}
+                    style={StyleSheet.absoluteFill}
                     ref={cameraRef}
                     flash={flashMode}
-                  >
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }}>
-                      {/* Viewfinder Overlay Guide */}
-                      <View style={s.viewfinder}>
-                        <View style={[s.viewfinderCorner, { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4 }]} />
-                        <View style={[s.viewfinderCorner, { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4 }]} />
-                        <View style={[s.viewfinderCorner, { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4 }]} />
-                        <View style={[s.viewfinderCorner, { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4 }]} />
-                        <Text style={s.viewfinderText}>ALIGN {selectedDoc.toUpperCase()} HERE</Text>
-                      </View>
+                  />
+
+                  {/* Viewfinder Overlay Guide (Peer, positioned absolutely) */}
+                  <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'transparent' }]}>
+                    <View style={s.viewfinder}>
+                      <View style={[s.viewfinderCorner, { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4 }]} />
+                      <View style={[s.viewfinderCorner, { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4 }]} />
+                      <View style={[s.viewfinderCorner, { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4 }]} />
+                      <View style={[s.viewfinderCorner, { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4 }]} />
+                      <Text style={s.viewfinderText}>ALIGN {selectedDoc.toUpperCase()} HERE</Text>
                     </View>
+                  </View>
 
-                    {/* Camera Controls Overlay */}
-                    <View style={s.cameraControls}>
-                      <TouchableOpacity
-                        onPress={() => setFlashMode(prev => prev === 'off' ? 'on' : 'off')}
-                        style={s.cameraSubBtn}
-                      >
-                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
-                          {flashMode === 'on' ? '⚡️ Flash On' : '⚡️ Flash Off'}
-                        </Text>
-                      </TouchableOpacity>
+                  {/* Camera Controls Overlay (Peer, positioned absolutely) */}
+                  <View style={s.cameraControls}>
+                    <TouchableOpacity
+                      onPress={() => setFlashMode(prev => prev === 'off' ? 'on' : 'off')}
+                      style={s.cameraSubBtn}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
+                        {flashMode === 'on' ? '⚡️ Flash On' : '⚡️ Flash Off'}
+                      </Text>
+                    </TouchableOpacity>
 
-                      <TouchableOpacity
-                        onPress={handleCapturePhoto}
-                        style={s.shutterBtn}
-                        activeOpacity={0.8}
-                      >
-                        <View style={s.shutterInner} />
-                      </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleCapturePhoto}
+                      style={s.shutterBtn}
+                      activeOpacity={0.8}
+                    >
+                      <View style={s.shutterInner} />
+                    </TouchableOpacity>
 
-                      <TouchableOpacity onPress={() => setModalMode('hub')} style={s.cameraSubBtn}>
-                        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Cancel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </CameraView>
+                    <TouchableOpacity onPress={() => setModalMode('hub')} style={s.cameraSubBtn}>
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               )}
 

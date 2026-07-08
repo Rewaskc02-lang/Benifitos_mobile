@@ -171,20 +171,25 @@ ${contextString}`;
   let response;
   let lastErr = null;
 
+
   while (attempts < maxAttempts) {
     const controller = new AbortController();
+    const timeoutVal = 35000; // Increased to 35s to prevent timeouts during complex RAG synthesis
+    const timeoutId = setTimeout(() => controller.abort(), timeoutVal);
+    const startTime = Date.now();
+    const targetUrl = "https://api.sarvam.ai/v1/chat/completions";
+    const targetModel = process.env.SARVAM_MODEL || "sarvam-30b";
 
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
-      console.log(`[Sarvam AI] Sending request, attempt ${attempts + 1}...`);
-      response = await fetch("https://api.sarvam.ai/v1/chat/completions", {
+      console.log(`[Sarvam AI] [Request Start] URL: ${targetUrl}, Model: ${targetModel}, Query Length: ${queryText.length}, Attempt: ${attempts + 1}`);
+      response = await fetch(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "api-subscription-key": sarvamKey,
         },
         body: JSON.stringify({
-          model: process.env.SARVAM_MODEL || "sarvam-30b",
+          model: targetModel,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: queryText },
@@ -194,12 +199,24 @@ ${contextString}`;
         signal: controller.signal,
       });
 
+      const duration = Date.now() - startTime;
+      console.log(`[Sarvam AI] [Request Duration] ${duration}ms`);
+      console.log(`[Sarvam AI] [HTTP Status] ${response.status}`);
+
       if (response.ok) {
+        if (typeof response.clone === "function") {
+          const clone = response.clone();
+          const successBody = await clone.text().catch(() => "");
+          console.log(`[Sarvam AI] [Response Body] ${successBody}`);
+        } else {
+          console.log(`[Sarvam AI] [Response Body] (Body cloning not supported on mock response)`);
+        }
         break; // break loop on success
       }
 
       const statusText = response.statusText;
       const errBody = await response.text().catch(() => "");
+      console.log(`[Sarvam AI] [Response Body (Error)] ${errBody}`);
       lastErr = new Error(
         `Status ${response.status} ${statusText}: ${errBody}`,
       );
@@ -208,8 +225,12 @@ ${contextString}`;
       );
     } catch (apiErr) {
       lastErr = apiErr;
+      const duration = Date.now() - startTime;
+      console.error(`[Sarvam AI] [Exception] Duration: ${duration}ms, Message: ${apiErr.message}`);
+      console.error(`[Sarvam AI] [Stack Trace] ${apiErr.stack}`);
+
       if (apiErr.name === "AbortError") {
-        console.error(`[Sarvam AI] Request timed out after 10 seconds.`);
+        console.error(`[Sarvam AI] Request timed out after ${timeoutVal / 1000} seconds.`);
         break;
       }
       console.warn(
