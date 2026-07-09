@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
-import { Paths, File, UploadType } from 'expo-file-system';
+import { Paths, File, UploadType, EncodingType } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Palette } from '@/constants/theme';
 import { useAuthStore } from '@/store/authStore';
@@ -178,7 +178,7 @@ export function MyDocumentsScreen({ onBack }: Props) {
         skipProcessing: false
       });
       if (photo?.uri) {
-        await processCapturedImage(photo.uri);
+        await processCapturedImage(photo.uri, photo.width, photo.height);
       }
     } catch {
       Alert.alert('Camera Error', 'Failed to capture image. Please try again.');
@@ -202,26 +202,84 @@ export function MyDocumentsScreen({ onBack }: Props) {
   };
 
   // Image manipulation: resize & compress to reduce upload payloads
-  const processCapturedImage = async (uri: string) => {
+  const processCapturedImage = async (uri: string, width?: number, height?: number) => {
     try {
       setLoading(true);
-      const manipulated = await manipulateAsync(
-        uri,
-        [{ resize: { width: 1200 } }],
-        { compress: 0.8, format: SaveFormat.JPEG }
-      );
-
-      // Fetch file sizes
-      const file = new File(manipulated.uri);
-      if (file.exists) {
-        const sizeInMb = file.size / (1024 * 1024);
-        setFileSizeStr(`${sizeInMb.toFixed(2)} MB`);
+      
+      if (isOffline) {
+        // Offline fallback: Use basic local crop and resize to save bandwidth/store offline
+        const actions: any[] = [];
+        if (width && height) {
+          const cropWidth = width * 0.85;
+          const cropHeight = width * 0.55;
+          const cropX = (width - cropWidth) / 2;
+          const cropY = (height - cropHeight) / 2;
+          actions.push({
+            crop: {
+              originX: Math.round(cropX),
+              originY: Math.round(cropY),
+              width: Math.round(cropWidth),
+              height: Math.round(cropHeight),
+            }
+          });
+        }
+        actions.push({ resize: { width: 1200 } });
+        const manipulated = await manipulateAsync(uri, actions, { compress: 0.8, format: SaveFormat.JPEG });
+        const file = new File(manipulated.uri);
+        if (file.exists) {
+          setFileSizeStr(`${(file.size / (1024 * 1024)).toFixed(2)} MB`);
+        }
+        setCapturedImageUri(manipulated.uri);
+        setModalMode('preview');
+        return;
       }
 
-      setCapturedImageUri(manipulated.uri);
-      setModalMode('preview');
-    } catch {
-      Alert.alert('Image Processing Error', 'Could not process captured document.');
+      // Online: Preprocess image on the backend to run advanced document edge/corner detection
+      const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5001';
+      const file = new File(uri);
+      
+      const response = await file.upload(
+        `${apiBaseUrl}/api/documents/preprocess`,
+        {
+          fieldName: 'file',
+          uploadType: UploadType.MULTIPART,
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.status === 200 && response.body) {
+        const parsed = JSON.parse(response.body);
+        if (parsed.status === 'Success' && parsed.preprocessedImage) {
+          // Remove prefix "data:image/jpeg;base64," if present
+          const base64Data = parsed.preprocessedImage.replace(/^data:image\/[a-z]+;base64,/, '');
+          
+          // Write to a local temporary file in the cache directory
+          const tempFilename = `preprocessed_doc_${Date.now()}.jpg`;
+          const tempFile = new File(Paths.cache, tempFilename);
+          await tempFile.create({ overwrite: true });
+          await tempFile.write(base64Data, { encoding: EncodingType.Base64 });
+          
+          setFileSizeStr(`${(tempFile.size / (1024 * 1024)).toFixed(2)} MB`);
+          setCapturedImageUri(tempFile.uri);
+          setModalMode('preview');
+        } else {
+          Alert.alert('Processing Error', 'Server preprocessor failed to extract document.');
+        }
+      } else {
+        let serverErrorMsg = 'Failed to scan document on server.';
+        try {
+          if (response.body) {
+            const parsed = JSON.parse(response.body);
+            if (parsed.error) serverErrorMsg = parsed.error;
+          }
+        } catch {}
+        Alert.alert('Processing Error', serverErrorMsg);
+      }
+    } catch (err: any) {
+      console.warn('[Preprocess error]', err);
+      Alert.alert('Scan Connection Failed', 'Unable to reach the BenefitOS scanning server.');
     } finally {
       setLoading(false);
     }
@@ -261,8 +319,6 @@ export function MyDocumentsScreen({ onBack }: Props) {
         }
       );
 
-      setUploadProgress(90);
-
       if (response.status === 200) {
         setUploadProgress(100);
         Alert.alert(
@@ -275,12 +331,29 @@ export function MyDocumentsScreen({ onBack }: Props) {
         setSelectedDoc(null);
         await fetchReadiness();
       } else {
-        throw new Error(`Upload API returned status ${response.status}`);
+        let serverErrorMsg = 'An unexpected error occurred during document validation.';
+        try {
+          if (response.body) {
+            const parsed = JSON.parse(response.body);
+            if (parsed.error) {
+              serverErrorMsg = parsed.error;
+            }
+          }
+        } catch {
+          if (response.body) {
+            serverErrorMsg = response.body;
+          }
+        }
+        Alert.alert(
+          'Document Verification Failed',
+          serverErrorMsg
+        );
       }
-    } catch {
+    } catch (err: any) {
+      console.warn('[Upload error]', err);
       Alert.alert(
-        'Upload Failed',
-        'Unable to complete verification upload. Would you like to queue it locally to sync later?',
+        'Upload Connection Failed',
+        'Unable to reach the BenefitOS server. Would you like to queue this document locally to sync later?',
         [
           { text: 'Queue Locally', onPress: () => queueUploadLocally(selectedDoc, capturedImageUri) },
           { text: 'Cancel', style: 'cancel' }

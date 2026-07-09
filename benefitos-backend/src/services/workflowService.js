@@ -35,8 +35,9 @@ exports.runRecalculationWorkflowForCitizen = async (citizenId) => {
 
   // 5. Check for missing documents and trigger warnings
   const readiness = await citizenService.getDocumentReadiness(citizenId).catch(() => null);
-  if (readiness && readiness.missingDocuments) {
-    for (const doc of readiness.missingDocuments) {
+  console.log("[Workflow] Document Readiness refreshed", readiness);
+  if (readiness && readiness.missing) {
+    for (const doc of readiness.missing) {
       await notificationQueries.createNotification(citizenId, {
         type: "missing_documents",
         title: "Missing Document Alert 📄",

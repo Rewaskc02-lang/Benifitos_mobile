@@ -15,6 +15,11 @@ exports.updateProfile = async (req, res, next) => {
 // Sarvam Voice / Text Assistant Stream Simulation Layer
 exports.handleAssistantStream = async (req, res, next) => {
   try {
+    console.log("[Assistant] Incoming query", {
+      citizenId: req.body?.citizenId,
+      queryLength: (req.body?.message || req.body?.question || "").length,
+      historyCount: Array.isArray(req.body?.history) ? req.body.history.length : 0,
+    });
     const result = await assistantService.generateAssistantResponse(req.body);
     res.json(result);
   } catch (err) {
@@ -44,8 +49,12 @@ exports.handleSynthesize = async (req, res, next) => {
 
 exports.verifyDocument = async (req, res, next) => {
   try {
-    const { citizenId, documentName } = req.body;
-    const result = await citizenService.verifyDocumentWorkflow(citizenId, documentName);
+    const { citizenId, documentName, ocrText, ocrConfidence } = req.body;
+    const result = await citizenService.verifyDocumentWorkflow(citizenId, documentName, {
+      file: req.file,
+      ocrText,
+      ocrConfidence,
+    });
     res.json(result);
   } catch (err) {
     next(err);
@@ -56,6 +65,15 @@ exports.triggerWelfareWorkflow = async (req, res, next) => {
   try {
     const citizenId = req.body.citizenId;
     const result = await workflowService.runRecalculationWorkflowForCitizen(citizenId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.preprocessDocument = async (req, res, next) => {
+  try {
+    const result = await citizenService.preprocessDocumentWorkflow(req.file);
     res.json(result);
   } catch (err) {
     next(err);

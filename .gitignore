@@ -45,3 +45,6 @@ example
 # Backend uploads
 benefitos-backend/uploads/*
 !benefitos-backend/uploads/.gitkeep
+
+# Neo4j credential dumps
+Neo4j-*-Created-*.txt

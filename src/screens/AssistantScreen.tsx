@@ -219,7 +219,14 @@ export function AssistantScreen() {
       // Run the API call and a minimum-delay timer in parallel;
       // whichever takes longer wins — guarantees ≥500ms typing indicator.
       const [response] = await Promise.all([
-        assistantService.ask({ question: text.trim(), citizenId: user?.id ?? 'citizen_101' }),
+        assistantService.ask({
+          question: text.trim(),
+          citizenId: user?.id ?? 'citizen_101',
+          history: messages
+            .filter((msg) => msg.id !== '0')
+            .slice(-8)
+            .map((msg) => ({ role: msg.role, content: msg.content })),
+        }),
         new Promise<void>((res) => setTimeout(res, MIN_TYPING_MS)),
       ]);
 
@@ -244,7 +251,7 @@ export function AssistantScreen() {
       setIsTyping(false);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
-  }, [isTyping, playAssistantReply, user, selectedLang]);
+  }, [isTyping, messages, playAssistantReply, user, selectedLang]);
 
   useEffect(() => {
     if (isRecording) {

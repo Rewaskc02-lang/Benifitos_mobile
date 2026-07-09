@@ -8,11 +8,22 @@ exports.generateAssistantResponse = async ({
   citizenId = "citizen_101",
   message,
   question,
+  history = [],
 }) => {
   const queryText = message || question;
   if (!queryText || !queryText.trim()) {
     return { answer: "Please ask a question so I can assist you." };
   }
+
+  const safeHistory = Array.isArray(history)
+    ? history
+        .filter((item) => item && ["user", "assistant"].includes(item.role) && typeof item.content === "string")
+        .slice(-8)
+        .map((item) => ({
+          role: item.role,
+          content: item.content.trim().slice(0, 1200),
+        }))
+    : [];
 
   // 1. Intent Detection
   const msgLower = queryText.toLowerCase();
@@ -98,6 +109,12 @@ exports.generateAssistantResponse = async ({
       `Failed to retrieve citizen context from database: ${dbErr.message}`,
     );
   }
+
+  console.log("[Assistant] Retrieved context", {
+    intents,
+    sections: Object.keys(contextData),
+    historyCount: safeHistory.length,
+  });
 
   // 3. Context Builder
   let contextString = `Citizen Profile:
@@ -192,9 +209,11 @@ ${contextString}`;
           model: targetModel,
           messages: [
             { role: "system", content: systemPrompt },
+            ...safeHistory,
             { role: "user", content: queryText },
           ],
-          temperature: 0.1,
+          temperature: 0.35,
+          max_tokens: Number(process.env.SARVAM_MAX_TOKENS || 900),
         }),
         signal: controller.signal,
       });
@@ -204,13 +223,6 @@ ${contextString}`;
       console.log(`[Sarvam AI] [HTTP Status] ${response.status}`);
 
       if (response.ok) {
-        if (typeof response.clone === "function") {
-          const clone = response.clone();
-          const successBody = await clone.text().catch(() => "");
-          console.log(`[Sarvam AI] [Response Body] ${successBody}`);
-        } else {
-          console.log(`[Sarvam AI] [Response Body] (Body cloning not supported on mock response)`);
-        }
         break; // break loop on success
       }
 
@@ -274,9 +286,16 @@ ${contextString}`;
       throw new Error("Sarvam AI returned an empty completions choices array.");
     }
 
+    const choice = data?.choices?.[0];
+    console.log("[Sarvam AI] Completion metadata", {
+      model: data.model || process.env.SARVAM_MODEL || "sarvam-30b",
+      finishReason: choice?.finish_reason,
+      usage: data.usage,
+    });
+
     return {
       answer:
-        data?.choices?.[0]?.message?.content ??
+        choice?.message?.content ??
         "I couldn't generate a response at the moment.",
     };
   } catch (parseErr) {
@@ -342,6 +361,14 @@ exports.transcribeAudio = async (audioBase64, languageCode = "hi-IN") => {
   throw new Error(`Speech-to-Text transcription failed: ${lastErr.message}`);
 };
 
+const truncateForTts = (text, maxLength = Number(process.env.SARVAM_TTS_MAX_CHARS || 900)) => {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  const clipped = trimmed.slice(0, maxLength);
+  const lastSentence = Math.max(clipped.lastIndexOf("."), clipped.lastIndexOf("\n"), clipped.lastIndexOf("।"));
+  return `${clipped.slice(0, lastSentence > 240 ? lastSentence + 1 : maxLength).trim()} Summary truncated for voice playback.`;
+};
+
 exports.synthesizeSpeech = async (text, targetLanguageCode = "hi-IN") => {
   const sarvamKey = process.env.SARVAM_API_KEY;
   if (!sarvamKey) {
@@ -355,8 +382,11 @@ exports.synthesizeSpeech = async (text, targetLanguageCode = "hi-IN") => {
   const maxAttempts = 3;
   let lastErr = null;
 
+  const ttsText = truncateForTts(text);
+
   while (attempts < maxAttempts) {
     try {
+      const startTime = Date.now();
       console.log(`[Sarvam TTS] Backend calling speech synthesis API, attempt ${attempts + 1}...`);
       const response = await fetch("https://api.sarvam.ai/text-to-speech", {
         method: "POST",
@@ -365,7 +395,7 @@ exports.synthesizeSpeech = async (text, targetLanguageCode = "hi-IN") => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: text.trim(),
+          text: ttsText,
           target_language_code: targetLanguageCode,
           model: "bulbul:v3",
           output_audio_codec: "wav",
@@ -382,6 +412,10 @@ exports.synthesizeSpeech = async (text, targetLanguageCode = "hi-IN") => {
       if (!audioBase64) {
         throw new Error("Sarvam TTS returned no audio data.");
       }
+      console.log("[Sarvam TTS] Completed", {
+        durationMs: Date.now() - startTime,
+        textLength: ttsText.length,
+      });
       return audioBase64;
     } catch (err) {
       lastErr = err;

@@ -1,6 +1,8 @@
 const citizenQueries = require("../queries/citizenQueries");
+const documentIntelligence = require("./documentIntelligenceService");
 const roadmapService = require("./roadmapService");
 const welfareService = require("./welfareService");
+const OCRProvider = require("./ocr/OCRProvider");
 
 const DEFAULT_CITIZEN_ID = "citizen_101";
 
@@ -103,15 +105,64 @@ exports.getPredictiveEligibility = async (citizenId) => {
   return { predictions };
 };
 
-exports.verifyDocumentWorkflow = async (citizenId, documentName) => {
-  await citizenQueries.verifyDocumentForCitizen(citizenId, documentName);
+exports.verifyDocumentWorkflow = async (citizenId, documentName, upload = {}) => {
+  let { file, ocrText, ocrConfidence } = upload;
+
+  // Run backend OCR text extraction if not manually passed by the client/tests
+  if (file && !ocrText) {
+    const ocrResult = await OCRProvider.extractText(file);
+    ocrText = ocrResult.text;
+    ocrConfidence = ocrResult.confidence;
+  }
+
+  const validation = documentIntelligence.validateUploadedDocument({
+    file,
+    documentName,
+    ocrText,
+    ocrConfidence,
+  });
+
+  if (!validation.valid) {
+    const err = new Error(validation.reason || "Document validation failed.");
+    err.statusCode = 400;
+    err.details = validation;
+    console.log("[Document Intelligence] Validation result", { valid: false, reason: err.message });
+    throw err;
+  }
+
+  await citizenQueries.verifyDocumentForCitizen(citizenId, validation.canonicalName);
+  console.log("[Document Intelligence] Neo4j updated", {
+    citizenId,
+    documentName: validation.canonicalName,
+  });
+
   const workflowService = require("./workflowService");
+  console.log("[Document Intelligence] Workflow triggered", { citizenId });
   const recalculationResult = await workflowService.runRecalculationWorkflowForCitizen(citizenId);
   const readiness = await exports.getDocumentReadiness(citizenId);
+  console.log("[Document Intelligence] Document Readiness refreshed", readiness);
+  console.log("[Document Intelligence] Welfare Score refreshed");
+  console.log("[Document Intelligence] Roadmap refreshed");
+  console.log("[Document Intelligence] Graph refreshed");
+  console.log("[Document Intelligence] Notifications generated", {
+    count: recalculationResult.notificationsGenerated,
+  });
   return {
     status: "Success",
-    message: `Document "${documentName}" verified successfully. Welfare score recalculated.`,
+    message: `Document "${validation.canonicalName}" verified successfully. Welfare score recalculated.`,
+    document: {
+      name: validation.canonicalName,
+      classification: validation.classification,
+      fields: validation.fields,
+    },
     readiness,
     notificationsGenerated: recalculationResult.notificationsGenerated
   };
+};
+
+exports.preprocessDocumentWorkflow = async (file) => {
+  if (!file || !file.path) {
+    throw new Error("No file uploaded for preprocessing.");
+  }
+  return OCRProvider.preprocessImage(file.path);
 };

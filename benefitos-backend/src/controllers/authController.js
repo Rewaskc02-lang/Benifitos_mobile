@@ -103,6 +103,17 @@ exports.login = async (req, res, next) => {
 
     const token = jwt.sign({ id: citizen.id, email: citizen.email }, JWT_SECRET, { expiresIn: "24h" });
 
+    // Sync database relationships for the logging-in citizen
+    await welfareService.recalculateEligibility(citizen.id).catch(err => {
+      console.error("[Login Recalculation] Failed to calculate eligibility:", err.message);
+    });
+    await roadmapService.refreshRoadmapRelationships(citizen.id).catch(err => {
+      console.error("[Login Recalculation] Failed to refresh roadmap:", err.message);
+    });
+    await welfareService.refreshRecommendationRelationships(citizen.id).catch(err => {
+      console.error("[Login Recalculation] Failed to refresh recommendations:", err.message);
+    });
+
     res.json({
       user: {
         id: citizen.id,
@@ -124,6 +135,12 @@ exports.login = async (req, res, next) => {
 exports.getMe = async (req, res, next) => {
   try {
     const citizenId = req.user.id;
+
+    // Refresh database relationships for session restore
+    await welfareService.recalculateEligibility(citizenId).catch(err => {
+      console.error("[getMe Recalculation] Failed to calculate eligibility:", err.message);
+    });
+
     const profiles = await citizenQueries.findCitizenById(citizenId);
     if (!profiles || profiles.length === 0) {
       return res.status(404).json({ error: "User profile not found" });

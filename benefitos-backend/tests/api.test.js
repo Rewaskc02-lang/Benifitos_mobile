@@ -13,6 +13,10 @@ process.env.NEO4J_PASSWORD = "8v_gV3QPv7dkQJKFztrLpca3cqpk9g0nlB0o9LPATtA";
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async function (url, options) {
   if (typeof url === "string" && url.includes("api.sarvam.ai")) {
+    globalThis.__lastSarvamRequest = {
+      url,
+      body: options?.body ? JSON.parse(options.body) : null,
+    };
     return {
       ok: true,
       status: 200,
@@ -349,12 +353,73 @@ const request = (method, path, body, headers = {}) =>
     server.on("error", reject);
   });
 
+const multipartRequest = (path, fields, file) =>
+  new Promise((resolve, reject) => {
+    const boundary = `----benefitos-test-${Date.now()}`;
+    const chunks = [];
+
+    for (const [name, value] of Object.entries(fields)) {
+      chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
+    }
+
+    chunks.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${file.filename}"\r\nContent-Type: ${file.contentType}\r\n\r\n`));
+    chunks.push(Buffer.from(file.content));
+    chunks.push(Buffer.from(`\r\n--${boundary}--\r\n`));
+
+    const payload = Buffer.concat(chunks);
+    const server = app.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port,
+          path,
+          method: "POST",
+          headers: {
+            "Content-Type": `multipart/form-data; boundary=${boundary}`,
+            "Content-Length": payload.length,
+            Authorization: `Bearer ${testTokenCitizen101}`,
+          },
+        },
+        (res) => {
+          const responseChunks = [];
+          res.on("data", (chunk) => responseChunks.push(chunk));
+          res.on("end", () => {
+            server.close();
+            const text = Buffer.concat(responseChunks).toString();
+            resolve({
+              statusCode: res.statusCode,
+              body: text ? JSON.parse(text) : null,
+            });
+          });
+        },
+      );
+
+      req.on("error", (err) => {
+        server.close();
+        reject(err);
+      });
+
+      req.end(payload);
+    });
+
+    server.on("error", reject);
+  });
+
 test.after(() => {
   Module._load = originalLoad;
 });
 
 test.beforeEach(() => {
   mode = "success";
+});
+
+test("GET /health returns healthy system state", async () => {
+  const res = await request("GET", "/health");
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.status, "GREEN");
+  assert.equal(res.body.sarvam.status, "GREEN");
+  assert.equal(res.body.database.status, "UP");
 });
 
 test("GET /api/welfare-score/:citizenId returns existing score shape", async () => {
@@ -392,6 +457,63 @@ test("GET /api/readiness/:citizenId returns 404 for missing citizen", async () =
 
   assert.equal(res.statusCode, 404);
   assert.deepEqual(res.body, { error: "Citizen not found" });
+});
+
+test("POST /api/documents/verify rejects images without OCR validation", async () => {
+  const res = await multipartRequest(
+    "/api/documents/verify",
+    {
+      citizenId: "citizen_101",
+      documentName: "Aadhaar Card",
+    },
+    {
+      filename: "selfie.jpg",
+      contentType: "image/jpeg",
+      content: "not-a-real-document",
+    },
+  );
+
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /OCR text was not extracted/);
+});
+
+test("POST /api/documents/verify accepts matching OCR-backed documents", async () => {
+  const res = await multipartRequest(
+    "/api/documents/verify",
+    {
+      citizenId: "citizen_101",
+      documentName: "PAN Card",
+      ocrText: "INCOME TAX DEPARTMENT Permanent Account Number ABCDE1234F",
+      ocrConfidence: "0.92",
+    },
+    {
+      filename: "pan.jpg",
+      contentType: "image/jpeg",
+      content: "fake-image-bytes",
+    },
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.document.name, "PAN Card");
+  assert.equal(res.body.status, "Success");
+});
+
+test("POST /api/documents/preprocess preprocesses document images and returns base64", async () => {
+  const res = await multipartRequest(
+    "/api/documents/preprocess",
+    {
+      citizenId: "citizen_101",
+    },
+    {
+      filename: "test.png",
+      contentType: "image/png",
+      content: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64"),
+    },
+  );
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.status, "Success");
+  assert.match(res.body.preprocessedImage, /^data:image\/jpeg;base64,/);
 });
 
 test("missing citizens keep legacy fallback shapes outside readiness", async () => {
@@ -683,6 +805,20 @@ test("POST /api/assistant calls Sarvam completions and retrieves Neo4j RAG conte
   assert.equal(res.statusCode, 200);
   assert.ok(res.body.answer.includes("✓"));
   assert.ok(res.body.answer.includes("UP Post-Matric Scholarship Scheme"));
+});
+
+test("POST /api/assistant forwards recent conversation history", async () => {
+  const res = await request("POST", "/api/assistant", {
+    message: "What about the document I mentioned?",
+    history: [
+      { role: "user", content: "I uploaded my Aadhaar yesterday." },
+      { role: "assistant", content: "I will use that context." },
+    ],
+  });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(globalThis.__lastSarvamRequest.body.messages[1].content, "I uploaded my Aadhaar yesterday.");
+  assert.equal(globalThis.__lastSarvamRequest.body.messages[2].content, "I will use that context.");
 });
 test("POST /api/workflows/recalculate executes background score and eligibility updates", async () => {
   const res = await request("POST", "/api/workflows/recalculate", {

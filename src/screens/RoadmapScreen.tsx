@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Palette } from '@/constants/theme';
+import { useIsFocused } from '@react-navigation/native';
+import { useEffect } from 'react';
 
 const CITIZEN_ID_FALLBACK = 'citizen_101';
 
@@ -201,6 +203,13 @@ export function RoadmapScreen() {
   const { user } = useAuthStore();
   const citizenId = user?.id ?? CITIZEN_ID_FALLBACK;
   const { data, isLoading, error, refetch } = useRoadmap(citizenId);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused) {
+      refetch();
+    }
+  }, [isFocused, refetch]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: Palette.background }} edges={['top']}>

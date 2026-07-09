@@ -47,30 +47,46 @@ exports.upsertCitizenProfile = (citizenId, profile) =>
     { citizenId, ...profile },
   );
 
-exports.verifyDocumentForCitizen = (citizenId, documentName) =>
-  runQuery(
+exports.verifyDocumentForCitizen = (citizenId, documentName) => {
+  const documentId = `doc-${documentName
+    .replace(/\s+Card$/i, "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")}`;
+
+  return runQuery(
     `
     MATCH (c:Citizen {id: $citizenId})
-    MERGE (d:Document {name: $documentName})
-    ON CREATE SET d.id = toLower(replace($documentName, " ", "-"))
-    MERGE (c)-[:HAS_DOCUMENT {verified: true}]->(d)
+    MERGE (d:Document {id: $documentId})
+    ON CREATE SET d.name = $documentName
+    SET d.name = coalesce(d.name, $documentName)
+    MERGE (c)-[rel:HAS_DOCUMENT]->(d)
+    SET rel.verified = true,
+        rel.verifiedAt = datetime()
     RETURN d.name as name
     `,
-    { citizenId, documentName },
+    { citizenId, documentName, documentId },
   );
+};
 
 exports.getDocumentReadiness = (citizenId) =>
   runQuery(
     `
     MATCH (c:Citizen {id:$citizenId})
+    
+    // Get all standard documents
+    MATCH (allD:Document)
+    WITH c, collect(DISTINCT allD) as allDocs
 
-    OPTIONAL MATCH (c)-[:ELIGIBLE_FOR]->(:Scheme)-[:REQUIRES_DOCUMENT]->(req:Document)
-    WITH c, [doc IN collect(DISTINCT req) WHERE doc IS NOT NULL] AS requiredDocs
-
+    // Get documents that the user has uploaded
     OPTIONAL MATCH (c)-[:HAS_DOCUMENT]->(owned:Document)
-    WITH
-      requiredDocs,
-      [doc IN collect(DISTINCT owned) WHERE doc IS NOT NULL] AS ownedDocs
+    WITH c, allDocs, [doc IN collect(DISTINCT owned) WHERE doc IS NOT NULL] AS ownedDocs
+
+    // Calculate required documents based on eligible schemes (fallback to all standard docs if none)
+    OPTIONAL MATCH (c)-[:ELIGIBLE_FOR]->(:Scheme)-[:REQUIRES_DOCUMENT]->(req:Document)
+    WITH c, allDocs, ownedDocs, [doc IN collect(DISTINCT req) WHERE doc IS NOT NULL] AS schemeReqDocs
+    WITH c, allDocs, ownedDocs,
+         CASE WHEN size(schemeReqDocs) > 0 THEN schemeReqDocs ELSE allDocs END AS requiredDocs
 
     WITH
       requiredDocs,
@@ -249,4 +265,3 @@ exports.getPredictiveEligibility = (citizenId) =>
     `,
     { citizenId }
   );
-

@@ -14,6 +14,7 @@ router.post("/assistant", authMiddleware, authMiddleware.authorizeCitizen, rateL
 router.post("/assistant/transcribe", authMiddleware, authMiddleware.authorizeCitizen, rateLimiter.assistantLimiter, workflowCtrl.handleTranscribe);
 router.post("/assistant/synthesize", authMiddleware, authMiddleware.authorizeCitizen, rateLimiter.assistantLimiter, workflowCtrl.handleSynthesize);
 router.post("/documents/verify", authMiddleware, authMiddleware.authorizeCitizen, rateLimiter.profileLimiter, upload.single("file"), workflowCtrl.verifyDocument);
+router.post("/documents/preprocess", authMiddleware, authMiddleware.authorizeCitizen, rateLimiter.profileLimiter, upload.single("file"), workflowCtrl.preprocessDocument);
 router.post("/workflows/recalculate", authMiddleware, authMiddleware.authorizeCitizen, rateLimiter.profileLimiter, workflowCtrl.triggerWelfareWorkflow);
 
 module.exports = router;

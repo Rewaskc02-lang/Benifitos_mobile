@@ -7,6 +7,7 @@ import { post } from '@/lib/api/client';
 export type AssistantRequest = {
   question: string;
   citizenId?: string;
+  history?: { role: 'user' | 'assistant'; content: string }[];
 };
 
 export type AssistantResponse = {

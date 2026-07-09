@@ -17,8 +17,10 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "jimp": "^1.6.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
-    "neo4j-driver": "^5.28.1"
+    "neo4j-driver": "^5.28.1",
+    "tesseract.js": "^7.0.0"
   }
 }

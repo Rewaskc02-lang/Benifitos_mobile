@@ -5,8 +5,11 @@ module.exports = (err, req, res, next) => {
     return res.status(400).json({ error: "Malformed JSON payload" });
   }
 
-  if (statusCode === 404) {
-    return res.status(404).json({ error: err.message || "Not found" });
+  if (statusCode >= 400 && statusCode < 500) {
+    return res.status(statusCode).json({
+      error: err.message || "Request failed",
+      ...(err.details ? { details: err.details } : {}),
+    });
   }
 
   if (err.code || err.name === "Neo4jError") {
