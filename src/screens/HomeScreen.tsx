@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -18,11 +18,17 @@ import { BottomTabParamList } from '@/navigation/RootNavigator';
 import { usePalette } from '@/store/themeStore';
 import { Skeleton, SkeletonCard } from '@/components/ui/Skeleton';
 import { Elevation } from '@/constants/theme';
+import { NotificationCenter } from '@/screens/NotificationCenter';
+import { GlobalSearch } from '@/screens/GlobalSearch';
+import { DocumentVault } from '@/screens/DocumentVault';
+import { EligibilityScreen } from '@/screens/EligibilityScreen';
+import { WelfareSimulator } from '@/screens/WelfareSimulator';
 
 const { width } = Dimensions.get('window');
 const CITIZEN_ID_FALLBACK = 'citizen_101';
 
 type HomeNavProp = BottomTabNavigationProp<BottomTabParamList, 'Home'>;
+type OverlayScreen = 'notifications' | 'search' | 'vault' | 'eligibility' | 'simulator' | null;
 
 // ---------------------------------------------------------------------------
 // Icons
@@ -94,6 +100,42 @@ function RefreshIcon({ color, size = 18 }: { color: string; size?: number }) {
   );
 }
 
+function BellIcon({ color, size = 18 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M18 8C18 6.4 17.4 4.8 16.2 3.6C15 2.4 13.5 2 12 2C10.5 2 9 2.4 7.8 3.6C6.6 4.8 6 6.4 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M13.7 21C13.5 21.3 13.3 21.6 12.9 21.8C12.5 22 12.3 22 12 22C11.7 22 11.5 22 11.1 21.8C10.7 21.6 10.5 21.3 10.3 21" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function SearchIcon({ color, size = 18 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="11" cy="11" r="8" stroke={color} strokeWidth={1.8} />
+      <Path d="M21 21L16.65 16.65" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function FileIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M14 2H6C5.46 2 4.94 2.21 4.59 2.59C4.21 2.94 4 3.46 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+      <Path d="M14 2V8H20M16 13H8M16 17H8M10 9H8" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ShieldIcon({ color, size = 20 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 2L3 7V12C3 16.55 6.84 20.74 12 22C17.16 20.74 21 16.55 21 12V7L12 2Z" stroke={color} strokeWidth={1.8} strokeLinejoin="round" />
+      <Path d="M9 12L11 14L15 10" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Score ring
 // ---------------------------------------------------------------------------
@@ -125,9 +167,6 @@ function WelfareRing({ score, color }: { score: number; color: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Skeleton loading for welfare card
-// ---------------------------------------------------------------------------
 function WelfareCardSkeleton({ P }: { P: ReturnType<typeof usePalette> }) {
   return (
     <View style={[styles.welfareCard, { backgroundColor: P.surface, borderColor: P.border }]}>
@@ -156,6 +195,7 @@ export function HomeScreen() {
   const { user } = useAuthStore();
   const P = usePalette();
   const citizenId = user?.id ?? CITIZEN_ID_FALLBACK;
+  const [overlay, setOverlay] = useState<OverlayScreen>(null);
 
   const { data, isLoading, error, refetch } = useWelfareScore(citizenId);
   const { data: missedData, isLoading: missedLoading } = useMissedBenefits(citizenId);
@@ -174,6 +214,13 @@ export function HomeScreen() {
     return `\u20B9${n}`;
   }, []);
 
+  // Show overlay screens full-screen without tab bar
+  if (overlay === 'notifications') return <NotificationCenter onBack={() => setOverlay(null)} />;
+  if (overlay === 'search') return <GlobalSearch onBack={() => setOverlay(null)} />;
+  if (overlay === 'vault') return <DocumentVault onBack={() => setOverlay(null)} />;
+  if (overlay === 'eligibility') return <EligibilityScreen onBack={() => setOverlay(null)} />;
+  if (overlay === 'simulator') return <WelfareSimulator onBack={() => setOverlay(null)} />;
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: P.background }]} edges={['top']}>
       <ScrollView
@@ -183,16 +230,27 @@ export function HomeScreen() {
       >
         {/* Header */}
         <View style={[styles.header, { backgroundColor: P.primary }]}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerGreeting}>Welcome back</Text>
             <Text style={styles.headerName}>{user?.name ?? 'Citizen'}</Text>
           </View>
+          {/* Search */}
           <TouchableOpacity
-            style={[styles.notifBtn, { borderColor: 'rgba(255,255,255,0.3)' }]}
-            onPress={() => navigation.navigate('Profile')}
+            style={[styles.headerIconBtn, { borderColor: 'rgba(255,255,255,0.25)' }]}
+            onPress={() => setOverlay('search')}
             activeOpacity={0.8}
+            accessibilityLabel="Search schemes and FAQs"
           >
-            <UserIcon color="#FFFFFF" size={18} />
+            <SearchIcon color="#FFFFFF" size={16} />
+          </TouchableOpacity>
+          {/* Notifications */}
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { borderColor: 'rgba(255,255,255,0.25)', marginLeft: 8 }]}
+            onPress={() => setOverlay('notifications')}
+            activeOpacity={0.8}
+            accessibilityLabel="Notifications"
+          >
+            <BellIcon color="#FFFFFF" size={16} />
           </TouchableOpacity>
         </View>
 
@@ -213,7 +271,6 @@ export function HomeScreen() {
           ) : data ? (
             <View style={[styles.welfareCard, { backgroundColor: P.surface, borderColor: P.border, ...Elevation.card }]}>
               <View style={styles.welfareTopRow}>
-                {/* Ring */}
                 <View style={{ position: 'relative', width: RING_SIZE, height: RING_SIZE }}>
                   <WelfareRing score={data.score} color={scoreColor} />
                   <View style={styles.ringLabel}>
@@ -222,7 +279,6 @@ export function HomeScreen() {
                   </View>
                 </View>
 
-                {/* Benefit chips */}
                 <View style={{ flex: 1, paddingLeft: 20 }}>
                   <Text style={[styles.welfareCardTitle, { color: P.textSecondary }]}>
                     Welfare Overview
@@ -256,6 +312,34 @@ export function HomeScreen() {
               )}
             </View>
           ) : null}
+        </View>
+
+        {/* Action Cards */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: P.textPrimary, marginBottom: 14 }]}>
+            Tools
+          </Text>
+          <View style={styles.actionGrid}>
+            {([
+              { label: 'Check Eligibility', icon: <ShieldIcon color={P.primary} />, action: 'eligibility' as OverlayScreen, bg: P.primaryA10, border: P.primaryA30 },
+              { label: 'Document Vault', icon: <FileIcon color={P.accent} />, action: 'vault' as OverlayScreen, bg: P.accentA15, border: P.accentA40 },
+              { label: 'What-If Simulator', icon: <TrendUpIcon color={P.success} />, action: 'simulator' as OverlayScreen, bg: P.successA15, border: P.successA30 },
+            ] as { label: string; icon: React.ReactNode; action: OverlayScreen; bg: string; border: string }[]).map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[styles.actionCard, { backgroundColor: P.surface, borderColor: item.border }]}
+                activeOpacity={0.75}
+                onPress={() => setOverlay(item.action)}
+                accessibilityLabel={item.label}
+                accessibilityRole="button"
+              >
+                <View style={[styles.actionIconWrap, { backgroundColor: item.bg }]}>
+                  {item.icon}
+                </View>
+                <Text style={[styles.actionLabel, { color: P.textPrimary }]}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Missed Benefits */}
@@ -317,6 +401,8 @@ export function HomeScreen() {
                 style={[styles.quickCard, { backgroundColor: P.surface, borderColor: P.border }]}
                 activeOpacity={0.75}
                 onPress={() => navigation.navigate(item.tab)}
+                accessibilityLabel={`Navigate to ${item.label}`}
+                accessibilityRole="button"
               >
                 <View style={[styles.quickIconWrap, { backgroundColor: item.bg }]}>
                   {item.icon}
@@ -336,7 +422,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 28,
@@ -354,10 +439,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  notifBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerIconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -400,10 +485,7 @@ const styles = StyleSheet.create({
   },
   ringLabel: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -451,6 +533,31 @@ const styles = StyleSheet.create({
   unlockBannerText: {
     flex: 1,
     fontSize: 12,
+    lineHeight: 18,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  actionCard: {
+    width: (width - 40 - 20) / 3,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 14,
+    alignItems: 'flex-start',
+  },
+  actionIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  actionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
     lineHeight: 18,
   },
   schemeRow: {

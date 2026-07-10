@@ -5,7 +5,7 @@ import Svg, { Path, Circle, Rect, Line, Polyline } from 'react-native-svg';
 import { useAuthStore } from '@/store/authStore';
 import { usePalette, useThemeStore } from '@/store/themeStore';
 import { AccountSettingsScreen } from '@/screens/profile/AccountSettingsScreen';
-import { NotificationsScreen } from '@/screens/profile/NotificationsScreen';
+import { NotificationCenter } from '@/screens/NotificationCenter';
 import { PrivacySecurityScreen } from '@/screens/profile/PrivacySecurityScreen';
 import { HelpSupportScreen } from '@/screens/profile/HelpSupportScreen';
 import { AboutScreen } from '@/screens/profile/AboutScreen';
@@ -118,7 +118,7 @@ export function ProfileScreen() {
   const [activeScreen, setActiveScreen] = useState<SubScreen>(null);
 
   if (activeScreen === 'account') return <AccountSettingsScreen onBack={() => setActiveScreen(null)} />;
-  if (activeScreen === 'notifications') return <NotificationsScreen onBack={() => setActiveScreen(null)} />;
+  if (activeScreen === 'notifications') return <NotificationCenter onBack={() => setActiveScreen(null)} />;
   if (activeScreen === 'privacy') return <PrivacySecurityScreen onBack={() => setActiveScreen(null)} />;
   if (activeScreen === 'help') return <HelpSupportScreen onBack={() => setActiveScreen(null)} />;
   if (activeScreen === 'about') return <AboutScreen onBack={() => setActiveScreen(null)} />;

@@ -8,6 +8,7 @@ import { NavigationContainer } from '@react-navigation/native';
 
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { SplashScreen } from '@/components/ui/SplashScreen';
+import { NetworkBanner } from '@/components/ui/NetworkBanner';
 import { useThemeStore } from '@/store/themeStore';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
         <NavigationContainer>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
           <RootNavigator />
+          <NetworkBanner />
           {!splashDone && (
             <SplashScreen onFinish={() => setSplashDone(true)} />
           )}

@@ -103,7 +103,7 @@ const CATEGORIES = [
   'Disabled', 'Central', 'State',
 ];
 
-const SCHEMES: Scheme[] = [
+export const SCHEMES: Scheme[] = [
   {
     id: 'pm-kisan',
     name: 'PM-KISAN',
