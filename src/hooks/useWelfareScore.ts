@@ -1,15 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { WelfareScore } from '@/lib/api/services/welfareService';
-
-// ---------------------------------------------------------------------------
-// 🔧 SWAP POINT — to use the real API, replace these two lines:
-//   import { welfareService } from '@/lib/api/services/welfareService';
-//   const fetchFn = (id: string) => welfareService.getWelfareScore(id);
-// ---------------------------------------------------------------------------
-import { mockGetWelfareScore } from '@/lib/api/mockApi';
-const fetchFn = (citizenId: string) => mockGetWelfareScore(citizenId);
-
-// ---------------------------------------------------------------------------
+import { welfareService } from '@/lib/api/services/welfareService';
 
 type WelfareScoreState = {
   data: WelfareScore | null;
@@ -17,11 +8,6 @@ type WelfareScoreState = {
   error: string | null;
 };
 
-/**
- * Hook that fetches the welfare score for a citizen.
- * The screen component is fully decoupled from the data source —
- * only this file needs to change when switching from mock to real API.
- */
 export function useWelfareScore(citizenId: string) {
   const [state, setState] = useState<WelfareScoreState>({
     data: null,
@@ -30,17 +16,17 @@ export function useWelfareScore(citizenId: string) {
   });
 
   const refetch = useCallback(async () => {
+    if (!citizenId) return;
     setState((s) => ({ ...s, isLoading: true, error: null }));
     try {
-      const data = await fetchFn(citizenId);
+      const data = await welfareService.getWelfareScore(citizenId);
       setState({ data, isLoading: false, error: null });
-    } catch (error) {
-      console.log('getWelfareScore error object:', error);
-      console.log(
-        'getWelfareScore error message:',
-        error instanceof Error ? error.message : String(error)
-      );
-      setState({ data: null, isLoading: false, error: 'Couldn\'t load score' });
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.error ??
+        err?.message ??
+        'Unable to load welfare score. Please check your connection.';
+      setState({ data: null, isLoading: false, error: msg });
     }
   }, [citizenId]);
 

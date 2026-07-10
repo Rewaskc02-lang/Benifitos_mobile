@@ -3,52 +3,39 @@ import {
   View, Text, Switch, ScrollView, StyleSheet, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Palette } from '@/constants/theme';
+import { usePalette } from '@/store/themeStore';
 
 const STORAGE_KEY = '@benefitos_notifications';
 
 type Pref = { key: string; label: string; description: string };
 
 const PREFS: Pref[] = [
-  {
-    key: 'scheme_alerts',
-    label: 'New Scheme Alerts',
-    description: 'Notify when new government schemes match your profile',
-  },
-  {
-    key: 'document_reminders',
-    label: 'Document Reminders',
-    description: 'Remind you to upload or renew expiring documents',
-  },
-  {
-    key: 'weekly_digest',
-    label: 'Weekly Digest',
-    description: 'A weekly summary of your welfare score progress',
-  },
-  {
-    key: 'application_updates',
-    label: 'Application Updates',
-    description: 'Status changes on schemes you have applied for',
-  },
-  {
-    key: 'family_alerts',
-    label: 'Family Member Alerts',
-    description: 'Notify when new schemes are found for your household members',
-  },
+  { key: 'scheme_alerts', label: 'New Scheme Alerts', description: 'Notify when new schemes match your profile' },
+  { key: 'document_reminders', label: 'Document Reminders', description: 'Remind you to upload or renew documents' },
+  { key: 'weekly_digest', label: 'Weekly Digest', description: 'A weekly summary of your welfare score' },
+  { key: 'application_updates', label: 'Application Updates', description: 'Status changes on your applications' },
+  { key: 'family_alerts', label: 'Family Alerts', description: 'Schemes found for household members' },
 ];
 
 const DEFAULT: Record<string, boolean> = {
-  scheme_alerts: true,
-  document_reminders: true,
-  weekly_digest: false,
-  application_updates: true,
-  family_alerts: true,
+  scheme_alerts: true, document_reminders: true,
+  weekly_digest: false, application_updates: true, family_alerts: true,
 };
+
+function BackIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M19 12H5M12 19L5 12L12 5" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
 interface Props { onBack: () => void; }
 
 export function NotificationsScreen({ onBack }: Props) {
+  const P = usePalette();
   const [prefs, setPrefs] = useState<Record<string, boolean>>(DEFAULT);
   const [ready, setReady] = useState(false);
 
@@ -66,40 +53,40 @@ export function NotificationsScreen({ onBack }: Props) {
   };
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <View style={s.header}>
+    <SafeAreaView style={[s.container, { backgroundColor: P.background }]} edges={['top']}>
+      <View style={[s.header, { borderBottomColor: P.border }]}>
         <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={s.backBtn}>
-          <Text style={s.backIcon}>←</Text>
+          <BackIcon color={P.textSecondary} />
         </TouchableOpacity>
-        <Text style={s.title}>Notifications</Text>
+        <Text style={[s.title, { color: P.textPrimary }]}>Notifications</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
-        <Text style={s.intro}>
-          Preferences are saved locally on this device. Actual notifications require
-          the app to be installed via a production build (not Expo Go).
-        </Text>
+        <View style={[s.infoBox, { backgroundColor: P.surface, borderColor: P.border }]}>
+          <Text style={[s.infoText, { color: P.textMuted }]}>
+            Preferences are saved locally. Notifications require a production build installed on your device.
+          </Text>
+        </View>
 
-        <View style={s.card}>
+        <View style={[s.card, { backgroundColor: P.surface, borderColor: P.border }]}>
           {PREFS.map((pref, idx) => (
             <View
               key={pref.key}
               style={[
                 s.row,
-                idx < PREFS.length - 1 && { borderBottomWidth: 1, borderBottomColor: Palette.border },
+                idx < PREFS.length - 1 && { borderBottomWidth: 1, borderBottomColor: P.border },
               ]}
             >
               <View style={s.rowText}>
-                <Text style={s.rowLabel}>{pref.label}</Text>
-                <Text style={s.rowDesc}>{pref.description}</Text>
+                <Text style={[s.rowLabel, { color: P.textPrimary }]}>{pref.label}</Text>
+                <Text style={[s.rowDesc, { color: P.textSecondary }]}>{pref.description}</Text>
               </View>
               <Switch
                 value={ready ? prefs[pref.key] : false}
                 onValueChange={() => toggle(pref.key)}
-                trackColor={{ false: Palette.border, true: Palette.primaryA55 }}
-                thumbColor={prefs[pref.key] ? Palette.primary : Palette.textMuted}
-                ios_backgroundColor={Palette.border}
+                trackColor={{ false: P.border, true: P.primaryA50 }}
+                thumbColor={prefs[pref.key] ? P.primary : P.textMuted}
               />
             </View>
           ))}
@@ -110,32 +97,19 @@ export function NotificationsScreen({ onBack }: Props) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Palette.background },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: Palette.border,
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16, borderBottomWidth: 1,
   },
   backBtn: { width: 40, paddingVertical: 4 },
-  backIcon: { color: Palette.textSecondary, fontSize: 22 },
-  title: { flex: 1, textAlign: 'center', color: Palette.textPrimary, fontSize: 17, fontWeight: '700' },
+  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700' },
   body: { padding: 24, paddingBottom: 48 },
-  intro: {
-    color: Palette.textMuted, fontSize: 12, lineHeight: 18,
-    marginBottom: 20,
-    backgroundColor: Palette.surface,
-    borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: Palette.border,
-  },
-  card: {
-    backgroundColor: Palette.surface, borderRadius: 20,
-    borderWidth: 1, borderColor: Palette.border, overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16,
-  },
-  rowText: { flex: 1, marginRight: 16 },
-  rowLabel: { color: Palette.textPrimary, fontSize: 15, fontWeight: '600', marginBottom: 3 },
-  rowDesc: { color: Palette.textSecondary, fontSize: 12, lineHeight: 17 },
+  infoBox: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 20 },
+  infoText: { fontSize: 12, lineHeight: 18 },
+  card: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingVertical: 15 },
+  rowText: { flex: 1, marginRight: 14 },
+  rowLabel: { fontSize: 15, fontWeight: '600', marginBottom: 3 },
+  rowDesc: { fontSize: 12, lineHeight: 17 },
 });

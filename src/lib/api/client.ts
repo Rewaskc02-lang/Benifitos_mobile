@@ -10,12 +10,16 @@ import { useAuthStore } from '@/store/authStore';
 // Configuration
 // ---------------------------------------------------------------------------
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://api.benefitos.com';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ??
+  process.env.EXPO_PUBLIC_API_BASE_URL ??
+  'https://benefitos-backend.onrender.com';
 
-const DEFAULT_TIMEOUT = 15_000; // 15 seconds
+const DEFAULT_TIMEOUT = 20_000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_BASE = 800;
 
 // ---------------------------------------------------------------------------
-// Create the base Axios instance
+// Create base Axios instance
 // ---------------------------------------------------------------------------
 
 export const apiClient: AxiosInstance = axios.create({
@@ -43,29 +47,49 @@ apiClient.interceptors.request.use(
 );
 
 // ---------------------------------------------------------------------------
-// Response interceptor — handle global errors (401, 5xx, etc.)
+// Exponential backoff retry helper
+// ---------------------------------------------------------------------------
+
+function isRetryable(error: any): boolean {
+  if (!error.response) return true; // Network error / timeout
+  const status = error.response?.status;
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+async function withRetry<T>(fn: () => Promise<T>, retries = MAX_RETRIES): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      attempt++;
+      if (attempt > retries || !isRetryable(err)) throw err;
+      const delay = RETRY_DELAY_BASE * Math.pow(2, attempt - 1);
+      await new Promise((res) => setTimeout(res, delay));
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Response interceptor — handle 401
 // ---------------------------------------------------------------------------
 
 apiClient.interceptors.response.use(
   (response: AxiosResponse) => response,
-  async (error) => {
-    const status = error?.response?.status;
-
-    if (status === 401) {
-      // Token expired — log the user out
+  (error) => {
+    if (error?.response?.status === 401) {
       useAuthStore.getState().logout();
     }
-
     return Promise.reject(error);
   }
 );
 
 // ---------------------------------------------------------------------------
-// Helper wrappers with typed responses
+// Typed helpers — all requests go through withRetry
 // ---------------------------------------------------------------------------
 
 export async function get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-  const response = await apiClient.get<T>(url, config);
+  const response = await withRetry(() => apiClient.get<T>(url, config));
   return response.data;
 }
 
@@ -74,7 +98,7 @@ export async function post<T, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  const response = await apiClient.post<T>(url, data, config);
+  const response = await withRetry(() => apiClient.post<T>(url, data, config));
   return response.data;
 }
 
@@ -83,7 +107,7 @@ export async function put<T, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  const response = await apiClient.put<T>(url, data, config);
+  const response = await withRetry(() => apiClient.put<T>(url, data, config));
   return response.data;
 }
 
@@ -92,11 +116,13 @@ export async function patch<T, D = unknown>(
   data?: D,
   config?: AxiosRequestConfig
 ): Promise<T> {
-  const response = await apiClient.patch<T>(url, data, config);
+  const response = await withRetry(() => apiClient.patch<T>(url, data, config));
   return response.data;
 }
 
 export async function del<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-  const response = await apiClient.delete<T>(url, config);
+  const response = await withRetry(() => apiClient.delete<T>(url, config));
   return response.data;
 }
+
+export { BASE_URL };

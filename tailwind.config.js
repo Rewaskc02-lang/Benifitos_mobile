@@ -10,30 +10,42 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#5B54D6',   // desaturated purple (was #6C63FF)
-          light: '#7B76E8',
-          dark: '#3D37A8',
+          DEFAULT: '#1E3D59',
+          light: '#2A5478',
+          dark: '#142A3E',
+        },
+        accent: {
+          DEFAULT: '#FF6E40',
+          light: '#FF8C66',
+          dark: '#E5501E',
         },
         secondary: {
-          DEFAULT: '#D6566E',   // muted rose error (was #FF6584) — kept for legacy className usage
-          light: '#E07A8F',
-          dark: '#A83348',
+          DEFAULT: '#FF6E40',
+          light: '#FF8C66',
+          dark: '#E5501E',
         },
         background: {
-          DEFAULT: '#0F0F1A',
-          card: '#16162A',      // was #1A1A2E
-          elevated: '#252545',
+          DEFAULT: '#F5F0E1',
+          card: '#FFFFFF',
+          elevated: '#EEE9D8',
         },
-        surface: '#16162A',
-        accent: '#3D9DB8',      // muted teal (was #00D2FF)
+        surface: '#FFFFFF',
         text: {
-          primary: '#EDEDF5',   // was #F0F0FF
-          secondary: '#9999BB',
-          muted: '#555577',
+          primary: '#1A1F2E',
+          secondary: '#4A5568',
+          muted: '#8896A5',
         },
-      },
-      fontFamily: {
-        sans: ['Inter', 'System'],
+        success: {
+          DEFAULT: '#1B6B3A',
+          light: '#28A85A',
+        },
+        error: {
+          DEFAULT: '#C0392B',
+          light: '#E74C3C',
+        },
+        warning: {
+          DEFAULT: '#D97706',
+        },
       },
     },
   },

@@ -4,13 +4,23 @@ import {
   ScrollView, StyleSheet, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Palette } from '@/constants/theme';
+import Svg, { Path } from 'react-native-svg';
+import { usePalette } from '@/store/themeStore';
 import { authService } from '@/lib/api/services/authService';
 import { useAuthStore } from '@/store/authStore';
+
+function BackIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
+      <Path d="M19 12H5M12 19L5 12L12 5" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
 
 interface Props { onBack: () => void; }
 
 export function AccountSettingsScreen({ onBack }: Props) {
+  const P = usePalette();
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name ?? '');
   const [saving, setSaving] = useState(false);
@@ -31,50 +41,48 @@ export function AccountSettingsScreen({ onBack }: Props) {
   };
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      {/* Header */}
-      <View style={s.header}>
+    <SafeAreaView style={[s.container, { backgroundColor: P.background }]} edges={['top']}>
+      <View style={[s.header, { borderBottomColor: P.border }]}>
         <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={s.backBtn}>
-          <Text style={s.backIcon}>←</Text>
+          <BackIcon color={P.textSecondary} />
         </TouchableOpacity>
-        <Text style={s.title}>Account Settings</Text>
+        <Text style={[s.title, { color: P.textPrimary }]}>Account Settings</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <ScrollView contentContainerStyle={s.body} showsVerticalScrollIndicator={false}>
-        {/* Profile section */}
-        <View style={s.card}>
-          <Text style={s.sectionLabel}>Display Name</Text>
+        <View style={[s.card, { backgroundColor: P.surface, borderColor: P.border }]}>
+          <Text style={[s.sectionLabel, { color: P.textMuted }]}>Display Name</Text>
           <TextInput
-            style={s.input}
+            style={[s.input, { backgroundColor: P.background, borderColor: P.border, color: P.textPrimary }]}
             value={name}
             onChangeText={setName}
             placeholder="Your name"
-            placeholderTextColor={Palette.textMuted}
+            placeholderTextColor={P.textMuted}
             autoCapitalize="words"
             returnKeyType="done"
             onSubmitEditing={handleSave}
           />
-          <Text style={s.hint}>This is how you appear across the app.</Text>
+          <Text style={[s.hint, { color: P.textMuted }]}>This is how you appear across the app.</Text>
         </View>
 
-        <View style={s.card}>
-          <Text style={s.sectionLabel}>Email Address</Text>
-          <View style={s.readonlyField}>
-            <Text style={s.readonlyText}>{user?.email ?? '—'}</Text>
+        <View style={[s.card, { backgroundColor: P.surface, borderColor: P.border }]}>
+          <Text style={[s.sectionLabel, { color: P.textMuted }]}>Email Address</Text>
+          <View style={[s.readonlyField, { backgroundColor: P.border }]}>
+            <Text style={[s.readonlyText, { color: P.textSecondary }]}>{user?.email ?? '—'}</Text>
           </View>
-          <Text style={s.hint}>Email cannot be changed at this time.</Text>
+          <Text style={[s.hint, { color: P.textMuted }]}>Email cannot be changed at this time.</Text>
         </View>
 
         <TouchableOpacity
-          style={[s.saveBtn, saving && s.btnDisabled]}
+          style={[s.saveBtn, { backgroundColor: P.primary }, saving && s.btnDisabled]}
           onPress={handleSave}
           activeOpacity={0.85}
           disabled={saving}
         >
           {saving
-            ? <ActivityIndicator color={Palette.white} size="small" />
-            : <Text style={s.saveBtnText}>Save Changes</Text>}
+            ? <ActivityIndicator color={P.white} size="small" />
+            : <Text style={[s.saveBtnText, { color: P.white }]}>Save Changes</Text>}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -82,43 +90,24 @@ export function AccountSettingsScreen({ onBack }: Props) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Palette.background },
+  container: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: Palette.border,
+    borderBottomWidth: 1,
   },
   backBtn: { width: 40, paddingVertical: 4 },
-  backIcon: { color: Palette.textSecondary, fontSize: 22 },
-  title: { flex: 1, textAlign: 'center', color: Palette.textPrimary, fontSize: 17, fontWeight: '700' },
+  title: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700' },
   body: { padding: 24, paddingBottom: 48 },
   card: {
-    backgroundColor: Palette.surface, borderRadius: 20,
-    borderWidth: 1, borderColor: Palette.border,
-    padding: 20, marginBottom: 16,
+    borderRadius: 16, borderWidth: 1, padding: 20, marginBottom: 16,
   },
-  sectionLabel: {
-    color: Palette.textMuted, fontSize: 11, fontWeight: '700',
-    letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12,
-  },
-  input: {
-    backgroundColor: Palette.background, borderWidth: 1,
-    borderColor: Palette.border, borderRadius: 14,
-    paddingHorizontal: 16, paddingVertical: 13,
-    color: Palette.textPrimary, fontSize: 16,
-  },
-  readonlyField: {
-    backgroundColor: Palette.border, borderRadius: 14,
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
-  readonlyText: { color: Palette.textSecondary, fontSize: 15 },
-  hint: { color: Palette.textMuted, fontSize: 12, marginTop: 8, lineHeight: 17 },
-  saveBtn: {
-    backgroundColor: Palette.primary, borderRadius: 14,
-    paddingVertical: 16, alignItems: 'center',
-    shadowColor: Palette.primary, shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35, shadowRadius: 12, elevation: 6,
-  },
+  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 13, fontSize: 15 },
+  readonlyField: { borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 },
+  readonlyText: { fontSize: 15 },
+  hint: { fontSize: 12, marginTop: 8, lineHeight: 17 },
+  saveBtn: { borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
-  saveBtnText: { color: Palette.white, fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
+  saveBtnText: { fontSize: 15, fontWeight: '700' },
 });
